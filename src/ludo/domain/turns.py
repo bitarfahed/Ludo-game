@@ -158,6 +158,34 @@ class TurnEngine:
         """Set one outer-path occupancy for tests or future game-state integration."""
         self.outer_occupancies[occupancy.global_index] = occupancy
 
+    def replace_player(self, updated_player: Player) -> None:
+        """Replace an active player while preserving their turn position."""
+        for index, active_player in enumerate(self.players):
+            if active_player.id == updated_player.id:
+                self.players = (
+                    *self.players[:index],
+                    updated_player,
+                    *self.players[index + 1 :],
+                )
+                return
+        msg = f"Cannot replace inactive player {updated_player.id}."
+        raise ValueError(msg)
+
+    def remove_player(self, player_id: str) -> None:
+        """Remove a ranked player from future turn rotation."""
+        remaining = tuple(player for player in self.players if player.id != player_id)
+        if len(remaining) == len(self.players):
+            msg = f"Cannot remove inactive player {player_id}."
+            raise ValueError(msg)
+        self.players = remaining
+        if not self.players or self.current_player_index >= len(self.players):
+            self.current_player_index = 0
+        self.phase = TurnPhase.WAITING_FOR_ROLL
+        self.last_roll = None
+        self.legal_piece_ids = ()
+        self.consecutive_sixes = 0
+        self._reset_timer()
+
     def roll(self) -> TurnEvent:
         """Roll dice for the current player and enter move selection when possible."""
         self._require_phase(TurnPhase.WAITING_FOR_ROLL)
@@ -250,6 +278,8 @@ class TurnEngine:
         return None
 
     def _end_turn(self) -> None:
+        if not self.players:
+            return
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.phase = TurnPhase.WAITING_FOR_ROLL
         self.last_roll = None

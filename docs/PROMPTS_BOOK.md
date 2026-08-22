@@ -597,6 +597,86 @@ Lessons learned:
 - Keeping dice and clock injected made timeout and Triple Six tests straightforward without tying
   turn logic to global randomness or real time.
 
+## Prompt 7
+
+Prompt ID: Prompt 7
+
+Title: Match Setup, Ranking & Completion
+
+Goal: Implement match-level setup, active-player eligibility, random valid color assignment,
+rankings, ranked-player turn removal, final remaining player auto-rank, and match completion.
+
+Context: Prompts 2 through 6 introduced players, pieces, board topology, movement, occupancy,
+capture/block outcomes, and the deterministic turn engine. This milestone completes the core
+match-level state around player counts, colors, turn eligibility, and standings.
+
+Full prompt or faithful prompt record: Prompt 7 was provided directly in chat. Its authoritative
+requirements included:
+
+- validate match creation for exactly 2, 3, or 4 players;
+- use existing `Player` and name validation;
+- assign colors randomly through an injectable abstraction;
+- enforce opposite colors for 2-player matches;
+- use three distinct colors for 3-player matches, with one inactive color;
+- use all four colors for 4-player matches;
+- keep inactive colors from having fake players or turns;
+- order active players clockwise by board/color order;
+- detect players whose four pieces are all `FINISHED`;
+- assign permanent rankings and never rank a player twice;
+- remove ranked players from future turn rotation;
+- automatically rank the final remaining player and mark the match complete;
+- integrate ranked-player eligibility with the existing turn engine;
+- avoid SDK/GameFacade, Pygame, UI widgets, rendering, animations, audio, and Bot logic.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/match.py`
+- `src/ludo/domain/turns.py`
+- `tests/unit/domain/test_match.py`
+
+Constraints:
+
+- Do not implement GameFacade/SDK.
+- Do not implement Pygame, start-screen widgets, name text boxes, rendering, visual timers,
+  animations, audio, or Bot logic.
+- Do not refactor unrelated existing modules unless required for ranking/turn eligibility.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+
+Result summary:
+
+- Added `Match` for validated match setup, active player ordering, ranking, and completion.
+- Added `RankingEntry`.
+- Added `ColorRandomizer`, `FixedColorRandomizer`, and `RandomColorRandomizer`.
+- Added `TurnEngine.replace_player` and `TurnEngine.remove_player` eligibility hooks.
+- Added 15 match tests, bringing the test suite to 123 tests.
+
+Issues discovered:
+
+- For a 2-player match, ranking the first completed player immediately auto-ranks the final player
+  and completes the match, leaving no remaining turn rotation. Ongoing ranked-player skipping is
+  therefore most naturally verified with 3+ active players.
+- No conflicts with approved gameplay documentation were found.
+
+Follow-up/refinement:
+
+- Future SDK/facade code should expose match setup and final standings without duplicating match
+  rules.
+- Future UI setup should collect names only; color assignment remains in the domain match layer.
+
+Lessons learned:
+
+- Sorting active players by `CLOCKWISE_COLORS` after assignment keeps turn order independent from
+  the order in which player names were entered.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

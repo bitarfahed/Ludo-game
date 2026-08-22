@@ -37,8 +37,8 @@ Default owner: Developer / Codex-assisted.
 | Define colors and piece states | Complete | High | Developer / Codex-assisted | Source/test skeleton | Enums or equivalent types represent colors and piece states. |
 | Define player and piece models | Complete | High | Developer / Codex-assisted | Colors and states | Active players own 4 pieces; inactive colors have none. |
 | Define board topology | Complete | High | Developer / Codex-assisted | Colors | 52 outer positions, 5 Home-Path squares, starts, and 8 safe squares are represented and tested. |
-| Add deterministic randomness abstraction | Complete | High | Developer / Codex-assisted | Source skeleton | Dice behavior can be controlled in tests; color assignment remains a later setup task. |
-| Implement color assignment | Planned | High | Developer / Codex-assisted | Randomness abstraction | 2-player opposite pairs, 3-player random inactive color, and 4-player assignment are tested. |
+| Add deterministic randomness abstraction | Complete | High | Developer / Codex-assisted | Source skeleton | Dice behavior and color assignment can be controlled in tests. |
+| Implement color assignment | Complete | High | Developer / Codex-assisted | Randomness abstraction | 2-player opposite pairs, 3-player random inactive color, and 4-player assignment are tested. |
 
 ## Phase 3: Rules and State Machine
 
@@ -51,7 +51,7 @@ Default owner: Developer / Codex-assisted.
 | Implement bonus roll rules | Complete | High | Developer / Codex-assisted | Move resolution | 6, capture, finish, non-stacking reasons, chained bonuses, and unusable roll behavior are tested. |
 | Implement triple-six rule | Complete | High | Developer / Codex-assisted | Bonus rules | Third consecutive six is cancelled without undoing first two moves. |
 | Implement turn manager | Complete | High | Developer / Codex-assisted | Player models | Clockwise active-player rotation skips inactive colors; ranked-player skipping remains for the ranking milestone. |
-| Implement ranking | Planned | High | Developer / Codex-assisted | Turn manager | Rankings for 2, 3, and 4 players and automatic final rank are tested. |
+| Implement ranking | Complete | High | Developer / Codex-assisted | Turn manager | Rankings for 2, 3, and 4 players and automatic final rank are tested. |
 | Implement timer state model | Complete | High | Developer / Codex-assisted | Turn state machine | Roll/move 10-second windows and no-legal notice completion are deterministic in tests. |
 
 ## Phase 4: Application Facade

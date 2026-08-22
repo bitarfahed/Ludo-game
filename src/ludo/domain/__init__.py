@@ -2,6 +2,7 @@
 
 from ludo.domain.board import BoardTopology, FinishedDestination, HomePathPosition
 from ludo.domain.colors import PlayerColor
+from ludo.domain.match import Match, RankingEntry
 from ludo.domain.movement import (
     DiceValueError,
     MoveDestination,
@@ -35,6 +36,7 @@ __all__ = [
     "FixedClock",
     "FixedDice",
     "HomePathPosition",
+    "Match",
     "MoveDestination",
     "MoveDestinationKind",
     "MovementRules",
@@ -45,6 +47,7 @@ __all__ = [
     "PlayerColor",
     "ProposedMove",
     "RandomDice",
+    "RankingEntry",
     "TurnEngine",
     "TurnEvent",
     "TurnEventKind",
