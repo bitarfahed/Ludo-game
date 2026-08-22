@@ -441,6 +441,86 @@ Lessons learned:
 - Calculating a proposed move first keeps legality checks and resolution tied to one authoritative
   route calculation.
 
+## Prompt 5
+
+Prompt ID: Prompt 5
+
+Title: Capture & Protection Blocks
+
+Goal: Implement outer-path occupancy, ordinary-square capture, safe-square protection, same-player
+blocks, joining protected blocks, mixed-player block persistence, and block dissolution without
+turns, bonus rolls, timers, ranking, or Pygame.
+
+Context: Prompt 4 introduced movement proposals and logical destinations. This milestone consumes
+those proposed moves to determine what happens when the destination is a shared outer-path square
+with existing pieces.
+
+Full prompt or faithful prompt record: Prompt 5 was provided as an attached pasted text file. Its
+authoritative requirements included:
+
+- read the relevant capture/block rules and architecture documentation;
+- capture exactly one vulnerable opponent on an ordinary outer square;
+- return captured pieces to `IN_YARD` with Yard-consistent location/progress;
+- prevent capture on safe squares;
+- allow safe-square stacking across any color combination;
+- make same-player ordinary-square stacks protected;
+- allow opponents to land on already protected ordinary blocks;
+- preserve legally formed mixed-player blocks while at least two pieces remain;
+- dissolve protection when an ordinary occupancy drops to one piece;
+- prevent direct creation of a mixed block from two vulnerable opponents;
+- keep Home Paths and Finished destinations outside outer-path collision rules;
+- avoid bonus rolls, Triple Six, random dice generation, turns, timers, ranking, SDK/GameFacade,
+  Pygame, rendering, animation, and audio.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/occupancy.py`
+- `tests/unit/domain/test_occupancy.py`
+
+Constraints:
+
+- Do not award capture bonuses.
+- Do not implement turn sequencing or dice behavior.
+- Do not add rendering, stack visualization, hover inspection, animation, audio, or Pygame logic.
+- Do not change movement rules except for consuming proposed move destinations.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+
+Result summary:
+
+- Added `OuterPathOccupancy` for pieces sharing one global outer-path square.
+- Added `CollisionResolver` for centralized outer-path capture/protection resolution.
+- Added `CollisionOutcome` with moved piece, captured piece, destination occupancy, and destination
+  protection status.
+- Added 17 occupancy tests, bringing the test suite to 93 tests.
+
+Issues discovered:
+
+- Mixed-player protection needs a tiny bit of occupancy history. The implementation represents that
+  as `OuterPathOccupancy.was_protected`, which persists only while at least two ordinary-square
+  pieces remain.
+- No conflicts with approved gameplay documentation were found.
+
+Follow-up/refinement:
+
+- Future turn/bonus logic should consume `CollisionOutcome.capture_occurred` rather than deciding
+  capture itself.
+- Future game-state/session code should maintain `OuterPathOccupancy.was_protected` as pieces leave
+  ordinary protected stacks.
+
+Lessons learned:
+
+- Keeping collision resolution separate from movement preserved the Prompt 4 route logic and left
+  occupancy effects inspectable for later systems.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do
