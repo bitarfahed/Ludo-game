@@ -71,8 +71,9 @@ Default owner: Developer / Codex-assisted.
 | Add Pygame dependency | Complete | High | Developer / Codex-assisted | Tooling bootstrap | Pygame is added through `uv add pygame`. |
 | Create window/application shell | Complete | High | Developer / Codex-assisted | Pygame dependency | Application opens a desktop window and can exit cleanly. |
 | Implement screen flow | Complete | High | Developer / Codex-assisted | Facade contracts | Start, name entry, game, pause, and final results screens are routable. |
-| Implement board geometry mapper | Planned | High | Developer / Codex-assisted | Board topology | Logical positions map to stable screen coordinates. |
-| Render board and pieces | Planned | High | Developer / Codex-assisted | Geometry mapper | Board, Yards, Home Paths, safe squares, Finish regions, and pieces render clearly. |
+| Implement board geometry mapper | Complete | High | Developer / Codex-assisted | Board topology | Logical positions map to stable screen coordinates. |
+| Render static board | Complete | High | Developer / Codex-assisted | Geometry mapper | Board, Yards, Home Paths, safe squares, and Finish regions render clearly. |
+| Render pieces | Planned | High | Developer / Codex-assisted | Static board rendering | Pieces render clearly on Yards, outer path, Home Paths, and Finish regions. |
 | Render stacks and hover inspection | Planned | High | Developer / Codex-assisted | Rendering | Stack summaries and hover panel display occupancy/protection/safe-square details. |
 | Implement input handling | Planned | High | Developer / Codex-assisted | Screen flow | Dice clicks, legal piece selection, hover, and `ESC` pause map to facade commands. |
 

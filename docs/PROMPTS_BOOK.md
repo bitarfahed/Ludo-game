@@ -848,6 +848,90 @@ Lessons learned:
 - Keeping screen navigation in a non-rendering controller made the shell practical to test without
   brittle screenshot assertions.
 
+## Prompt 10
+
+Prompt ID: Prompt 10
+
+Title: Board Geometry & Rendering
+
+Goal: Render the complete static Ludo board in Pygame while keeping logical game state independent
+from screen coordinates.
+
+Context: Prompt 9 added the runnable Pygame shell and screen navigation. Prompt 10 adds the
+geometry responsibility and static board drawing consumed by the existing game screen.
+
+Full prompt or faithful prompt record: Prompt 10 was provided directly in chat. Its authoritative
+requirements included:
+
+- read only relevant UX, architecture, and TODO documentation;
+- create a dedicated board-geometry responsibility that maps logical positions to screen
+  coordinates;
+- support visual placement for the 52 shared outer-path squares, four start squares, eight safe
+  squares, four 5-square Home Paths, four Yards, four Finish regions, center dice area,
+  player-name areas, and timer areas;
+- keep game state independent from screen coordinates;
+- render a recognizable classic Ludo structure with modern restrained visual treatment;
+- provide query APIs for outer rectangles/centers, Home Path squares, Yard positions, Finish
+  regions, center dice area, player label/timer areas, and hit-testing where practical;
+- render safe squares distinctly without implementing capture/protection behavior;
+- display player names near Yards using facade/UI state;
+- add meaningful non-screenshot geometry tests;
+- avoid dice interaction, dice animation, piece movement interaction, legal highlights, destination
+  previews, stack rendering, hover popups, countdown visualization, movement/capture animations,
+  audio, and Bot logic;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, `uv run ruff check .`, and launch the
+  application for visual verification.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/geometry/__init__.py`
+- `src/ludo/geometry/board_geometry.py`
+- `src/ludo/geometry/grid.py`
+- `src/ludo/pygame_ui/board_renderer.py`
+- `src/ludo/pygame_ui/screens.py`
+- `tests/unit/geometry/test_board_geometry.py`
+
+Constraints:
+
+- Do not implement dice interaction, dice rolling animation, piece movement interaction,
+  legal-move highlighting, destination preview, stack rendering, hover inspection popup, countdown
+  visualization, capture animation, movement animation, audio, or Bot logic.
+- Do not put gameplay rules into geometry.
+- Do not create screenshot-comparison tests.
+
+Verification performed:
+
+- Added focused geometry tests for outer squares, Home Paths, Yards, Finish regions, safe/start
+  mapping, required regions, representative hit-testing, and centered layout adaptation.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and Pygame launch.
+
+Result summary:
+
+- Added pure `BoardGeometry` APIs using immutable `ScreenRect` and `BoardHit` value objects.
+- Mapped a classic 15x15 Ludo grid to the current 960x640 shell window.
+- Rendered all static board regions from geometry on the game screen.
+- Rendered active/inactive Yards, Home Paths, Finish cells, center dice placeholder area, player
+  labels, timer placeholder areas, start squares, and star safe squares.
+
+Issues discovered:
+
+- The existing roadmap had one combined "Render board and pieces" row. It was split so static board
+  rendering can be marked complete while actual piece rendering remains planned.
+
+Follow-up/refinement:
+
+- Future prompts should render pieces and stacks using the geometry API rather than hard-coded
+  coordinates.
+- Dice UI and timer visualization should use the existing center dice and timer-area geometry.
+
+Lessons learned:
+
+- A 15x15 grid gives a recognizable board while keeping coordinates centralized and simple to test.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

@@ -7,6 +7,7 @@ from contextlib import suppress
 import pygame
 
 from ludo.pygame_ui import layout, theme
+from ludo.pygame_ui.board_renderer import BoardRenderer
 from ludo.pygame_ui.controls import Button, draw_text
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
@@ -18,6 +19,7 @@ class ScreenRenderer:
         self.title_font = pygame.font.Font(None, 56)
         self.font = pygame.font.Font(None, 30)
         self.small_font = pygame.font.Font(None, 24)
+        self.board_renderer = BoardRenderer()
         self.active_name_index: int | None = None
 
     def draw(self, surface: pygame.Surface, controller: ScreenController) -> None:
@@ -111,25 +113,13 @@ class ScreenRenderer:
             button.draw(surface, self.font)
 
     def _draw_game(self, surface: pygame.Surface, controller: ScreenController) -> None:
-        _draw_title(surface, self.title_font, "Game")
         snapshot = controller.snapshot()
         if snapshot is None:
             draw_text(surface, self.font, "No match is active.", (300, 150))
             return
+        self.board_renderer.draw(surface, snapshot, self.font, self.small_font)
         current = snapshot.current_player.name if snapshot.current_player else "None"
-        draw_text(surface, self.font, f"Current player: {current}", (300, 130))
-        draw_text(
-            surface,
-            self.small_font,
-            "Board rendering and dice UI arrive in later prompts.",
-            (300, 170),
-        )
-        y = 225
-        for player in snapshot.players:
-            color = theme.color_for_name(player.color.value)
-            pygame.draw.circle(surface, color, (316, y + 12), 10)
-            draw_text(surface, self.font, f"{player.name} - {player.color.value.title()}", (340, y))
-            y += 42
+        draw_text(surface, self.small_font, f"Current: {current}", (28, 24), theme.TEXT)
 
     def _draw_results(self, surface: pygame.Surface, controller: ScreenController) -> None:
         _draw_title(surface, self.title_font, "Results")
