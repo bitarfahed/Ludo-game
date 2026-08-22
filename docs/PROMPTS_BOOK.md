@@ -677,6 +677,85 @@ Lessons learned:
 - Sorting active players by `CLOCKWISE_COLORS` after assignment keeps turn order independent from
   the order in which player names were entered.
 
+## Prompt 8
+
+Prompt ID: Prompt 8
+
+Title: GameFacade / SDK Boundary
+
+Goal: Implement the application-facing `GameFacade` boundary so future Pygame UI and non-UI
+controllers can start matches, inspect state, roll, query legal moves, select pieces, inspect
+timers, and consume structured results without depending directly on internal domain services.
+
+Context: Prompts 2 through 7 completed the Pygame-independent domain foundation: players, pieces,
+board topology, movement, capture/protection, turn engine, timers, match setup, ranking, and match
+completion. This milestone exposes those capabilities through an application/SDK layer.
+
+Full prompt or faithful prompt record: Prompt 8 was provided directly in chat. Its authoritative
+requirements included:
+
+- read only relevant facade, TODO, and public-operation rules documentation;
+- expose match creation/start, current match state, current player, turn phase, dice rolling, legal
+  moves, piece movement, timers, player/piece state, rankings, and completion;
+- prefer immutable/read-only public snapshots so UI code cannot mutate domain state;
+- expose structured result/event information for dice rolls, no legal moves, moves, captures,
+  finishes, bonus availability, turn changes, rankings, and match completion;
+- preserve dependency direction `Pygame UI -> GameFacade / SDK -> Domain / Services`;
+- keep future Bot compatibility by using the same public state/action boundary;
+- reject invalid facade operations cleanly;
+- add focused facade integration tests;
+- update `docs/TODO.md` and this prompts book;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/__init__.py`
+- `src/ludo/app/facade.py`
+- `tests/integration/test_game_facade.py`
+
+Constraints:
+
+- Do not implement Pygame, windows, screens, board drawing, input handling, visual timers,
+  animations, audio, pause menu, Bot logic, or network/API services.
+- Do not move business rules into the facade.
+- Do not redesign established domain rules unless required for a real integration defect.
+
+Verification performed:
+
+- Ran `uv run pytest` during implementation.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`, and
+  `uv run ruff check .`.
+
+Result summary:
+
+- Added `GameFacade` as the app-layer public boundary over `Match` and `TurnEngine`.
+- Added frozen public snapshots for game state, players, pieces, legal moves, and rankings.
+- Added structured facade results for match start, dice rolls, no-legal moves, piece movement,
+  captures, finishes, bonus state, turn changes, timeouts, ranking, and match completion.
+- Added facade validation errors for wrong phases, illegal piece choices, missing matches, and
+  completed matches.
+- Added integration tests for facade setup, query, roll, move, capture, finish, ranking,
+  completion, timer, invalid actions, and snapshot immutability.
+
+Issues discovered:
+
+- Finishing a final piece can both produce a domain finish bonus reason and immediately rank/remove
+  that player. The facade reports the finish reason while exposing no usable bonus roll once the
+  player has been ranked or the match is complete.
+
+Follow-up/refinement:
+
+- Future UI work should call the facade instead of importing internal domain movement, capture,
+  topology, ranking, or turn-engine modules.
+- Pause/resume remains a separate planned application workflow.
+
+Lessons learned:
+
+- Wrapping domain events into immutable app-layer results keeps UI needs visible without duplicating
+  gameplay decisions.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

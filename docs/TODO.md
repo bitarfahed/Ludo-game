@@ -58,10 +58,10 @@ Default owner: Developer / Codex-assisted.
 
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
-| Design facade contracts | Planned | High | Developer / Codex-assisted | Domain foundation | GUI-facing commands and snapshots are explicit and tested. |
-| Implement match start workflow | Planned | High | Developer / Codex-assisted | Color assignment | Player count and names validate through the facade. |
-| Implement roll workflow | Planned | High | Developer / Codex-assisted | Legal moves, timers | Roll phase returns dice result, legal choices, no-legal state, or triple-six cancellation. |
-| Implement move selection workflow | Planned | High | Developer / Codex-assisted | Move resolution | Selecting a piece resolves the move and returns snapshot/events. |
+| Design facade contracts | Complete | High | Developer / Codex-assisted | Domain foundation | GUI-facing commands and snapshots are explicit and tested. |
+| Implement match start workflow | Complete | High | Developer / Codex-assisted | Color assignment | Player count and names validate through the facade. |
+| Implement roll workflow | Complete | High | Developer / Codex-assisted | Legal moves, timers | Roll phase returns dice result, legal choices, no-legal state, or triple-six cancellation. |
+| Implement move selection workflow | Complete | High | Developer / Codex-assisted | Move resolution | Selecting a piece resolves the move and returns snapshot/events. |
 | Implement pause/resume workflow | Planned | Medium | Developer / Codex-assisted | Timer state model | Pause preserves game state and remaining timer. |
 
 ## Phase 5: Pygame Shell and Rendering
