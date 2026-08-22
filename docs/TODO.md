@@ -18,17 +18,17 @@ Default owner: Developer / Codex-assisted.
 | Create UX design document | Complete | High | Developer / Codex-assisted | None | Planned screens, interactions, feedback, and accessibility notes documented. |
 | Create architecture plan | Complete | High | Developer / Codex-assisted | None | Architecture boundaries, diagrams, SDK facade, testing strategy, and ADRs documented. |
 | Create prompts book | Complete | Medium | Developer / Codex-assisted | None | Prompt 0 is recorded and reusable entry format exists. |
-| Review and approve documentation | Planned | High | Developer / Codex-assisted | Documentation package | Human reviewer accepts docs or requests revisions. |
+| Review and approve documentation | Complete | High | Developer / Codex-assisted | Documentation package | Human reviewer accepts docs or requests revisions. |
 
 ## Phase 1: Project and Tooling Bootstrap
 
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
-| Configure package metadata | Planned | High | Developer / Codex-assisted | Documentation approval | `pyproject.toml` reflects package name, version strategy, Python version, and tooling plan. |
-| Add `uv.lock` | Planned | High | Developer / Codex-assisted | Package metadata | Dependencies are locked through `uv`. |
-| Add Ruff configuration | Planned | High | Developer / Codex-assisted | Package metadata | `uv run ruff check .` is the documented lint command with `line-length = 100`. |
-| Create source package skeleton | Planned | High | Developer / Codex-assisted | Package metadata | `src/ludo/` exists with package `__init__.py` files and no gameplay shortcuts. |
-| Create test skeleton | Planned | High | Developer / Codex-assisted | Package metadata | `tests/unit/` and `tests/integration/` exist. |
+| Configure package metadata | Complete | High | Developer / Codex-assisted | Documentation approval | `pyproject.toml` reflects package name, version strategy, Python version, and tooling plan. |
+| Add `uv.lock` | Complete | High | Developer / Codex-assisted | Package metadata | Dependencies are locked through `uv`. |
+| Add Ruff configuration | Complete | High | Developer / Codex-assisted | Package metadata | `uv run ruff check .` is the documented lint command with `line-length = 100`. |
+| Create source package skeleton | Complete | High | Developer / Codex-assisted | Package metadata | `src/ludo/` exists with package `__init__.py` files and no gameplay shortcuts. |
+| Create test skeleton | Complete | High | Developer / Codex-assisted | Package metadata | `tests/unit/` and `tests/integration/` exist. |
 
 ## Phase 2: Core Domain Foundation
 

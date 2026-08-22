@@ -111,6 +111,91 @@ Lessons learned:
 - The custom dynamic block rule should be treated as a core domain concept, not a rendering detail.
 - Future prompts should read `PRD_GAME_RULES.md` and `PLAN.md` before implementing gameplay logic.
 
+## Prompt 1
+
+Prompt ID: Prompt 1
+
+Title: Repository & Tooling Bootstrap
+
+Goal: Prepare the repository for professional Python development using `uv`, `pyproject.toml`,
+`uv.lock`, Ruff, pytest, pytest-cov, `.gitignore`, a clean package/test skeleton, and project
+versioning without implementing gameplay or Pygame application logic.
+
+Context: Documentation was completed and reviewed in Prompt 0. The approved architecture requires a
+Pygame-independent domain engine, `uv` workflow, Ruff, pytest, coverage target `>= 85%`, and a
+minimal package skeleton aligned with `docs/PLAN.md`.
+
+Full prompt or faithful prompt record: The Prompt 1 request was provided as an attached pasted text
+file. Its authoritative requirements included:
+
+- read the existing documentation first;
+- create or improve `.gitignore`;
+- remove tracked `.idea/` files from Git tracking while keeping local files intact;
+- use `uv` as the only dependency/project workflow;
+- add only currently needed dependencies, with dev dependencies including pytest, pytest-cov, and
+  Ruff;
+- set the approved initial application version strategy for `1.00`;
+- clean up `pyproject.toml`;
+- create a minimal package and test skeleton;
+- update documentation facts;
+- run `uv sync` and `uv run ruff check .`;
+- run pytest only if meaningful tests exist;
+- do not implement gameplay, Ludo rules, Pygame rendering, or domain classes.
+
+Files expected to change:
+
+- `.gitignore`
+- `pyproject.toml`
+- `uv.lock`
+- `README.md`
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/__init__.py`
+- package directory `__init__.py` files
+- `tests/unit/.gitkeep`
+- `tests/integration/.gitkeep`
+
+Constraints:
+
+- Do not implement gameplay.
+- Do not implement Ludo rules.
+- Do not create Pygame rendering.
+- Do not create game-domain classes.
+- Do not manually edit `uv.lock`.
+- Do not use `pip`, `requirements.txt`, virtualenv commands, or `python -m pytest`.
+- Do not rewrite Git history or delete local IDE files.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run ruff check .`.
+- Checked Git tracking for `.idea/`.
+- Confirmed no `src/ludo` files contain gameplay or Pygame application logic.
+
+Result summary:
+
+- Repository/tooling bootstrap completed.
+- `pyproject.toml` now contains project metadata, Ruff config, pytest config, and coverage config.
+- `uv.lock` was generated through `uv`.
+- Minimal package and test skeletons were created.
+- `.idea/` was removed from Git tracking while local IDE files were left on disk.
+
+Issues discovered:
+
+- Python package metadata uses normalized version `1.0` for the approved application version
+  `1.00`. This keeps packaging standards compliant while preserving the documented application
+  version decision.
+- No meaningful behavioral tests exist yet, so pytest was not run as a success signal.
+
+Follow-up/refinement:
+
+- Begin future development with TDD for domain models and board topology.
+- Add meaningful tests before making pytest a required passing verification step.
+
+Lessons learned:
+
+- Keep the bootstrap intentionally small so later prompts can introduce behavior under tests.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

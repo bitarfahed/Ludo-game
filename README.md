@@ -1,8 +1,8 @@
 # Ludo
 
 Ludo is a planned professional Python desktop game built with Pygame. The project is currently in
-the documentation and architecture-planning stage only: no playable game, source package, tests, or
-assets have been implemented yet.
+the repository/tooling bootstrap stage: no playable game, behavioral tests, assets, gameplay rules,
+or Pygame application logic have been implemented yet.
 
 The first playable version will support local Human vs Human matches for 2, 3, or 4 players. AI,
 online play, networking, accounts, databases, and external APIs are intentionally out of scope for
@@ -65,16 +65,19 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture plan and ADRs.
 - Pytest for automated tests
 - Mermaid diagrams in Markdown documentation
 
-Planned workflow examples:
+Development setup:
 
 ```bash
 uv sync
-uv add pygame
-uv run pytest
 uv run ruff check .
 ```
 
-These commands are future workflow guidance; dependencies and tests have not been added yet.
+`uv run pytest` will become part of the normal verification workflow once meaningful tests are
+added. The current test directories are present, but behavioral tests have not been written yet.
+
+The approved initial application version is `1.00`. Python package metadata stores the normalized
+PEP 440 version `1.0`, which is the authoritative package representation of that application
+version.
 
 ## Testing and Quality Targets
 
@@ -91,10 +94,17 @@ where practical. GUI rendering may be excluded from strict coverage where justif
 
 ## Repository Structure
 
-Current documentation package:
+Current repository structure:
 
 ```text
 README.md
+pyproject.toml
+uv.lock
+src/
+└── ludo/
+tests/
+├── unit/
+└── integration/
 docs/
 ├── PRD.md
 ├── PLAN.md
@@ -104,7 +114,7 @@ docs/
 └── PROMPTS_BOOK.md
 ```
 
-Future source, tests, and assets are planned but not yet created.
+Future gameplay source, behavioral tests, and assets are planned but not yet created.
 
 ## Documentation
 
@@ -117,7 +127,7 @@ Future source, tests, and assets are planned but not yet created.
 
 ## Development Status
 
-Status: Documentation bootstrap complete. Implementation has not started.
+Status: Repository and tooling bootstrap complete. Gameplay implementation has not started.
 
 The roadmap in [docs/TODO.md](docs/TODO.md) distinguishes completed documentation work from future
 implementation tasks.
