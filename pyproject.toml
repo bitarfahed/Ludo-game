@@ -4,7 +4,9 @@ version = "1.0"
 description = "A planned professional Python/Pygame desktop Ludo game."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pygame>=2.6.1",
+]
 
 [build-system]
 requires = ["hatchling"]

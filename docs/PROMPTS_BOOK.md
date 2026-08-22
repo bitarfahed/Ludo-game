@@ -756,6 +756,98 @@ Lessons learned:
 - Wrapping domain events into immutable app-layer results keeps UI needs visible without duplicating
   gameplay decisions.
 
+## Prompt 9
+
+Prompt ID: Prompt 9
+
+Title: Pygame Application Shell & Screen Flow
+
+Goal: Create the first runnable Pygame application shell with clean screen/state navigation through
+`MAIN_MENU`, `PLAYER_SETUP`, `GAME`, `RESULTS`, and a paused game overlay, without rendering the
+real Ludo board or implementing dice/piece interaction.
+
+Context: Prompt 8 introduced the `GameFacade` application boundary. This milestone creates the
+first Pygame layer above that boundary while keeping gameplay rules inside the facade/domain.
+
+Full prompt or faithful prompt record: Prompt 9 was provided as an attached pasted text file. Its
+authoritative requirements included:
+
+- add Pygame through `uv` if absent;
+- initialize Pygame cleanly, open the main window, run a stable loop, and close cleanly;
+- implement screen states `MAIN_MENU`, `PLAYER_SETUP`, `GAME`, and `RESULTS`;
+- implement Start Game and Quit on the main menu;
+- implement setup for 2, 3, or 4 players with dynamic name fields and 10-character name limits;
+- prevent match start with invalid or blank names;
+- start matches through the existing facade rather than assigning colors in Pygame;
+- create a placeholder game screen showing player names, assigned colors, and current player;
+- create a placeholder results screen with Play Again, Main Menu, and Quit;
+- toggle a pause overlay from the game screen with `ESC`;
+- keep UI, screen manager, controls, and application loop responsibilities separated;
+- avoid full board rendering, dice UI, piece rendering, legal highlights, timer visualization,
+  animations, audio, and Bot logic;
+- add meaningful tests for screen-state transitions and setup behavior;
+- update `docs/TODO.md`, `docs/PROMPTS_BOOK.md`, and README only if a runnable command exists;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- launch the app once through `uv run` and report manual verification honestly.
+
+Files expected to change:
+
+- `README.md`
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `pyproject.toml`
+- `uv.lock`
+- `src/ludo/pygame_ui/__init__.py`
+- `src/ludo/pygame_ui/controls.py`
+- `src/ludo/pygame_ui/main.py`
+- `src/ludo/pygame_ui/screens.py`
+- `src/ludo/pygame_ui/state.py`
+- `src/ludo/pygame_ui/theme.py`
+- `tests/unit/pygame_ui/test_screens.py`
+- `tests/unit/pygame_ui/test_state.py`
+
+Constraints:
+
+- Do not implement full Ludo board rendering, 52-square geometry, Home Path drawing, safe-square
+  graphics, dice rendering/rolling UI, piece rendering, legal-move highlighting, timer
+  visualization, hover inspection, stack visualization, movement animations, capture animations,
+  audio, or Bot logic.
+- Do not duplicate color-assignment rules in Pygame.
+- Keep gameplay interaction through the facade.
+
+Verification performed:
+
+- Added Pygame with `uv add pygame`.
+- Added state and Pygame smoke tests.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and a Pygame smoke launch.
+
+Result summary:
+
+- Added a runnable Pygame shell at `uv run python -m ludo.pygame_ui.main`.
+- Added a testable `ScreenController` with setup, game, results, pause, menu, and shutdown state.
+- Added lightweight Pygame controls, theme constants, screen rendering, and event dispatch.
+- Connected setup start to `GameFacade.start_match`.
+- Placeholder game screen displays facade snapshot data: player names, assigned colors, and current
+  player.
+- Placeholder results screen can display facade ranking data.
+
+Issues discovered:
+
+- Full pause/resume timer synchronization remains out of scope for this prompt; the current pause is
+  a UI overlay/state toggle over the game screen.
+
+Follow-up/refinement:
+
+- Future prompts should add board geometry/rendering and then dice/piece input through the facade.
+- Timer-aware pause/resume should be implemented when timer presentation and gameplay interactions
+  are added.
+
+Lessons learned:
+
+- Keeping screen navigation in a non-rendering controller made the shell practical to test without
+  brittle screenshot assertions.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do
