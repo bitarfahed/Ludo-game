@@ -14,6 +14,8 @@ class AnimationSettings:
     capture_return_ms: int = 300
     finish_pulse_ms: int = 320
     dice_roll_ms: int = 450
+    no_legal_notice_ms: int = 5_000
+    feedback_notice_ms: int = 2_000
 
 
 @dataclass(frozen=True, slots=True)

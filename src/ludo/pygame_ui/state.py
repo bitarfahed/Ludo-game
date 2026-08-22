@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 from ludo.app import GameFacade, GameSnapshot
+from ludo.config import DEFAULT_ANIMATION_SETTINGS
 from ludo.domain.players import MAX_PLAYER_NAME_LENGTH
 
 MIN_PLAYER_COUNT = 2
@@ -65,12 +66,21 @@ class ScreenController:
     paused: bool = False
     running: bool = True
     error_message: str | None = None
+    no_legal_notice_ms_remaining: int = 0
+    feedback_message: str | None = None
+    feedback_ms_remaining: int = 0
+
+    @property
+    def gameplay_input_blocked(self) -> bool:
+        """Return whether UX feedback is currently blocking gameplay input."""
+        return self.no_legal_notice_ms_remaining > 0
 
     def open_setup(self) -> None:
         """Move from the menu into player setup."""
         self.screen = ScreenState.PLAYER_SETUP
         self.paused = False
         self.error_message = None
+        self._clear_feedback()
 
     def back_to_menu(self) -> None:
         """Return to the main menu and clear active gameplay state."""
@@ -78,6 +88,7 @@ class ScreenController:
         self.facade = None
         self.paused = False
         self.error_message = None
+        self._clear_feedback()
 
     def set_player_count(self, player_count: int) -> None:
         """Update setup player count."""
@@ -100,6 +111,7 @@ class ScreenController:
         self.screen = ScreenState.GAME
         self.paused = False
         self.error_message = None
+        self._clear_feedback()
         return snapshot
 
     def show_results(self) -> None:
@@ -107,23 +119,32 @@ class ScreenController:
         self.screen = ScreenState.RESULTS
         self.paused = False
         self.error_message = None
+        self._clear_feedback()
 
-    def play_again(self) -> None:
-        """Return from results to setup for a new match."""
-        self.facade = None
-        self.screen = ScreenState.PLAYER_SETUP
-        self.paused = False
-        self.error_message = None
+    def restart_match(self) -> GameSnapshot:
+        """Start a fresh match from the current setup values."""
+        return self.start_game()
+
+    def play_again(self) -> GameSnapshot:
+        """Start a fresh match from the previous setup."""
+        return self.start_game()
 
     def toggle_pause(self) -> None:
         """Toggle the game pause overlay."""
         if self.screen is ScreenState.GAME:
             self.paused = not self.paused
+            if self.facade is not None:
+                if self.paused:
+                    self.facade.pause()
+                else:
+                    self.facade.resume()
 
     def resume(self) -> None:
         """Resume gameplay from the pause overlay."""
         if self.screen is ScreenState.GAME:
             self.paused = False
+            if self.facade is not None:
+                self.facade.resume()
 
     def quit(self) -> None:
         """Signal application shutdown."""
@@ -134,3 +155,30 @@ class ScreenController:
         if self.facade is None:
             return None
         return self.facade.snapshot()
+
+    def start_no_legal_notice(self) -> None:
+        """Start the approved no-legal-move countdown UX."""
+        self.no_legal_notice_ms_remaining = DEFAULT_ANIMATION_SETTINGS.no_legal_notice_ms
+        self.feedback_message = "NO LEGAL MOVE"
+        self.feedback_ms_remaining = self.no_legal_notice_ms_remaining
+
+    def show_feedback(self, message: str) -> None:
+        """Show short non-blocking gameplay feedback."""
+        self.feedback_message = message
+        self.feedback_ms_remaining = DEFAULT_ANIMATION_SETTINGS.feedback_notice_ms
+
+    def update_feedback(self, delta_ms: int) -> None:
+        """Advance transient UX countdowns."""
+        if self.feedback_ms_remaining > 0:
+            self.feedback_ms_remaining = max(0, self.feedback_ms_remaining - delta_ms)
+            if self.feedback_ms_remaining == 0:
+                self.feedback_message = None
+        if self.no_legal_notice_ms_remaining > 0:
+            self.no_legal_notice_ms_remaining = max(
+                0, self.no_legal_notice_ms_remaining - delta_ms
+            )
+
+    def _clear_feedback(self) -> None:
+        self.no_legal_notice_ms_remaining = 0
+        self.feedback_message = None
+        self.feedback_ms_remaining = 0

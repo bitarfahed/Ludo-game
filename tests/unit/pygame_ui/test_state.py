@@ -100,8 +100,8 @@ def test_results_navigation() -> None:
     controller.show_results()
     controller.play_again()
 
-    assert controller.screen is ScreenState.PLAYER_SETUP
-    assert controller.facade is None
+    assert controller.screen is ScreenState.GAME
+    assert controller.facade is not None
 
 
 def test_quit_signals_application_shutdown() -> None:

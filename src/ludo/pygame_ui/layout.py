@@ -78,7 +78,8 @@ def buttons_for(controller: ScreenController) -> tuple[Button, ...]:
 def pause_buttons() -> tuple[Button, ...]:
     """Return pause-overlay buttons."""
     return (
-        Button("resume", "Resume", pygame.Rect(380, 230, 200, 46)),
-        Button("main_menu", "Main Menu", pygame.Rect(380, 292, 200, 46)),
-        Button("quit", "Quit", pygame.Rect(380, 354, 200, 46)),
+        Button("resume", "Resume", pygame.Rect(380, 210, 200, 42)),
+        Button("restart_match", "Restart Match", pygame.Rect(380, 262, 200, 42)),
+        Button("main_menu", "Main Menu", pygame.Rect(380, 314, 200, 42)),
+        Button("quit", "Quit", pygame.Rect(380, 366, 200, 42)),
     )

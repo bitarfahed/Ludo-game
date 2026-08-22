@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ludo.app import GameFacadeError, LegalMoveSnapshot, MoveDestinationSnapshot
+from ludo.app import FacadeResult, GameFacadeError, LegalMoveSnapshot, MoveDestinationSnapshot
 from ludo.audio import AudioService
 from ludo.domain.turns import TurnPhase
 from ludo.geometry import BoardGeometry, ScreenRect
@@ -35,6 +35,7 @@ class GameplayInteractionController:
     audio: AudioService = field(default_factory=AudioService)
     preview: DestinationPreview | None = None
     inspection: OccupancyInspection | None = None
+    latest_result: FacadeResult | None = None
 
     def handle_click(self, position: tuple[int, int], controller: ScreenController) -> bool:
         """Handle one gameplay click and return whether it was consumed."""
@@ -89,6 +90,7 @@ class GameplayInteractionController:
         self.audio.play_result(result)
         self.preview = None
         self.inspection = None
+        self.latest_result = result
         return True
 
     def _try_choose_piece(self, controller: ScreenController, piece_id: str) -> bool:
@@ -112,6 +114,7 @@ class GameplayInteractionController:
         self.audio.play_result(result)
         self.preview = None
         self.inspection = None
+        self.latest_result = result
         return True
 
     def _legal_piece_at(self, position: tuple[int, int], snapshot) -> str | None:
@@ -126,6 +129,12 @@ class GameplayInteractionController:
                 if piece.piece_id in legal_piece_ids:
                     return piece.piece_id
         return None
+
+    def pop_result(self) -> FacadeResult | None:
+        """Return the latest facade result once."""
+        result = self.latest_result
+        self.latest_result = None
+        return result
 
     def _destination_bounds(self, destination: MoveDestinationSnapshot) -> ScreenRect | None:
         if destination.kind.value == "outer_path" and destination.global_outer_index is not None:
@@ -145,6 +154,7 @@ def _can_interact(controller: ScreenController) -> bool:
     return (
         controller.screen is ScreenState.GAME
         and not controller.paused
+        and not controller.gameplay_input_blocked
         and controller.facade is not None
     )
 

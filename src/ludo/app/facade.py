@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
@@ -159,10 +160,41 @@ class FacadeResult:
 
 
 @dataclass(slots=True)
+class PausableClock:
+    """Real monotonic clock that can freeze elapsed game time while paused."""
+
+    _paused_at: float | None = None
+    _paused_total: float = 0
+
+    def now(self) -> float:
+        """Return active, non-paused monotonic time."""
+        current = self._paused_at if self._paused_at is not None else time.monotonic()
+        return current - self._paused_total
+
+    @property
+    def paused(self) -> bool:
+        """Return whether the clock is currently paused."""
+        return self._paused_at is not None
+
+    def pause(self) -> None:
+        """Freeze active time."""
+        if self._paused_at is None:
+            self._paused_at = time.monotonic()
+
+    def resume(self) -> None:
+        """Resume active time without counting paused duration."""
+        if self._paused_at is None:
+            return
+        self._paused_total += time.monotonic() - self._paused_at
+        self._paused_at = None
+
+
+@dataclass(slots=True)
 class GameFacade:
     """Small public boundary over match, turn, movement, capture, and ranking services."""
 
     _match: Match | None = None
+    _pausable_clock: PausableClock | None = None
 
     def start_match(
         self,
@@ -173,11 +205,12 @@ class GameFacade:
         clock: Clock | None = None,
     ) -> FacadeResult:
         """Create a new match and return its first public snapshot."""
+        self._pausable_clock = PausableClock() if clock is None else None
         self._match = Match.create(
             tuple(player_names),
             color_randomizer=color_randomizer,
             dice=dice,
-            clock=clock,
+            clock=clock or self._pausable_clock,
         )
         snapshot = self.snapshot()
         return FacadeResult(FacadeResultKind.MATCH_STARTED, snapshot)
@@ -186,6 +219,16 @@ class GameFacade:
     def from_match(cls, match: Match) -> GameFacade:
         """Wrap an existing match, useful for save/load and focused integration tests."""
         return cls(match)
+
+    def pause(self) -> None:
+        """Pause UI-created match time when supported."""
+        if self._pausable_clock is not None:
+            self._pausable_clock.pause()
+
+    def resume(self) -> None:
+        """Resume UI-created match time when supported."""
+        if self._pausable_clock is not None:
+            self._pausable_clock.resume()
 
     def snapshot(self) -> GameSnapshot:
         """Return an immutable public snapshot of the current match."""

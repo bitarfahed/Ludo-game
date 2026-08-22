@@ -1298,6 +1298,101 @@ Lessons learned:
 - Animation state can be kept presentation-only if the facade exposes enough resolved event data:
   route, final dice value, capture result, finish result, and ranking result.
 
+## Prompt 15
+
+Prompt ID: Prompt 15
+
+Title: Complete UX Integration & Match Flow
+
+Goal: Complete the remaining user-facing local Human-vs-Human flow from main menu through final
+results without adding new gameplay rules.
+
+Context: Prompt 14 added animations and audio. Prompt 15 integrates the remaining UX states:
+no-legal-move countdown, timeout feedback, completed pause/restart flow, ranking feedback, final
+results, and clean reset paths.
+
+Full prompt or faithful prompt record: Prompt 15 was provided as an attached pasted text file. Its
+authoritative requirements included:
+
+- read only relevant UX, rules, and TODO documentation;
+- show `NO LEGAL MOVE` for 5 seconds with countdown and block gameplay input;
+- automatically continue to the next player after the no-legal notice;
+- represent roll and move decision windows and provide timeout feedback;
+- complete pause with Resume, Restart Match, Main Menu, and Quit;
+- freeze timers, animations, and gameplay input while paused;
+- restart matches without stale state;
+- show brief ranking feedback when a player finishes all four pieces;
+- transition to final Results when the match completes;
+- support final standings for 2, 3, and 4 players, including automatic final rank;
+- ensure Play Again, Main Menu, and Quit clear stale state correctly;
+- add integration/state tests for the complete flow and alternate paths;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- manually launch and verify representative complete flows without fabricating checks.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/__init__.py`
+- `src/ludo/app/facade.py`
+- `src/ludo/config/defaults.py`
+- `src/ludo/pygame_ui/interaction.py`
+- `src/ludo/pygame_ui/layout.py`
+- `src/ludo/pygame_ui/screens.py`
+- `src/ludo/pygame_ui/state.py`
+- `tests/integration/test_game_facade.py`
+- `tests/unit/pygame_ui/test_screens.py`
+- `tests/unit/pygame_ui/test_state.py`
+
+Constraints:
+
+- Do not implement Bot/AI, networking, online multiplayer, new Ludo rules, rule variants, major
+  redesign, screenshots/GIFs, release work, or tagging.
+- Do not reproduce legal-move logic in Pygame.
+- Avoid brittle screenshot tests.
+
+Verification performed:
+
+- Added tests for the 5-second no-legal flow, roll timeout, move timeout, pause freeze, resume,
+  restart cleanup, rank notification, ranked-player removal from turn rotation, standings for 2/3/4
+  players, automatic final rank, Play Again clean state, Main Menu cleanup, and representative
+  match completion reaching Results.
+- Added a facade pause-clock test showing UI-created matches preserve remaining time while paused.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`, and
+  `uv run ruff check .`.
+
+Result summary:
+
+- Added a pausable real clock for UI-created facade matches while preserving injected clocks for
+  deterministic tests.
+- Added facade `pause()` and `resume()` methods.
+- Added screen-flow state for no-legal countdowns and transient feedback messages.
+- Added automatic no-legal turn passing, timeout processing, ranking feedback, and final Results
+  transition in the Pygame screen update loop.
+- Added Restart Match to the pause overlay.
+- Made Play Again immediately start a fresh match from the previous setup.
+- Centralized presentation reset so Main Menu, Restart, Play Again, and new Start Game do not leak
+  stale animations, hover state, or facade results.
+
+Issues discovered:
+
+- UI-created matches were using the deterministic `FixedClock`, so real gameplay timers did not
+  naturally expire. Prompt 15 fixed this by creating a pausable real clock at the facade boundary
+  when no test clock is injected.
+- The pause menu was missing Restart Match; Prompt 15 added it and wired it to a clean restart.
+
+Follow-up/refinement:
+
+- Final QA/release work remains a separate future milestone.
+- Manual full-path testing should be repeated during final QA with real human input and screenshots
+  only when requested by the release prompt.
+
+Lessons learned:
+
+- Keeping timeout/no-legal progression in the UI update loop still preserves the rule boundary when
+  every transition is routed through existing facade commands.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

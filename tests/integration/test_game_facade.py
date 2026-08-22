@@ -1,6 +1,7 @@
 """Integration tests for the application-facing game facade."""
 
 from dataclasses import FrozenInstanceError, replace
+from importlib import import_module
 
 import pytest
 
@@ -101,6 +102,22 @@ def test_current_player_and_phase_are_queryable() -> None:
     assert facade.current_player().color is PlayerColor.RED
     assert facade.current_phase() is TurnPhase.WAITING_FOR_ROLL
     assert facade.seconds_remaining() == 10
+
+
+def test_ui_facade_pause_preserves_remaining_time(monkeypatch) -> None:
+    facade_module = import_module("ludo.app.facade")
+    times = iter([0.0, 4.0, 4.0, 4.0, 9.0, 11.0])
+    monkeypatch.setattr(facade_module.time, "monotonic", lambda: next(times))
+    facade = GameFacade()
+
+    facade.start_match(("Alice", "Bob"))
+    assert facade.seconds_remaining() == 6
+
+    facade.pause()
+    assert facade.seconds_remaining() == 6
+
+    facade.resume()
+    assert facade.seconds_remaining() == 4
 
 
 def test_valid_roll_flow_exposes_dice_and_legal_moves() -> None:

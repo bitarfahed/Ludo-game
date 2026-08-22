@@ -62,7 +62,7 @@ Default owner: Developer / Codex-assisted.
 | Implement match start workflow | Complete | High | Developer / Codex-assisted | Color assignment | Player count and names validate through the facade. |
 | Implement roll workflow | Complete | High | Developer / Codex-assisted | Legal moves, timers | Roll phase returns dice result, legal choices, no-legal state, or triple-six cancellation. |
 | Implement move selection workflow | Complete | High | Developer / Codex-assisted | Move resolution | Selecting a piece resolves the move and returns snapshot/events. |
-| Implement pause/resume workflow | Planned | Medium | Developer / Codex-assisted | Timer state model | Pause preserves game state and remaining timer. |
+| Implement pause/resume workflow | Complete | Medium | Developer / Codex-assisted | Timer state model | Pause preserves game state and remaining timer. |
 
 ## Phase 5: Pygame Shell and Rendering
 
@@ -86,9 +86,9 @@ Default owner: Developer / Codex-assisted.
 | Add movement animation | Complete | High | Developer / Codex-assisted | Rendering | Pieces animate square-by-square using resolved domain events. |
 | Add capture animation | Complete | Medium | Developer / Codex-assisted | Movement animation | Captures show short feedback and return captured piece visually to Yard. |
 | Add timer presentation | Complete | High | Developer / Codex-assisted | Timer state | Numeric and progress indicators appear near active player. |
-| Add no-legal-move notification | Planned | High | Developer / Codex-assisted | Timer presentation | 5-second message appears and then advances turn. |
+| Add no-legal-move notification | Complete | High | Developer / Codex-assisted | Timer presentation | 5-second message appears and then advances turn. |
 | Add audio service | Complete | Low | Developer / Codex-assisted | Core UX complete | Optional sound effects respect configured volumes. |
-| Add final results polish | Planned | Medium | Developer / Codex-assisted | Ranking/rendering | Final rankings and Play Again/Main Menu/Quit paths are polished. |
+| Add final results polish | Complete | Medium | Developer / Codex-assisted | Ranking/rendering | Final rankings and Play Again/Main Menu/Quit paths are polished. |
 
 ## Phase 7: Quality, Documentation, and Release
 
