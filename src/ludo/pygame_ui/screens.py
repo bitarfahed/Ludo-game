@@ -137,6 +137,7 @@ class ScreenRenderer:
             self.font,
             self.small_font,
             self.interaction.preview,
+            self.interaction.inspection,
         )
 
     def _draw_results(self, surface: pygame.Surface, controller: ScreenController) -> None:

@@ -74,7 +74,7 @@ Default owner: Developer / Codex-assisted.
 | Implement board geometry mapper | Complete | High | Developer / Codex-assisted | Board topology | Logical positions map to stable screen coordinates. |
 | Render static board | Complete | High | Developer / Codex-assisted | Geometry mapper | Board, Yards, Home Paths, safe squares, and Finish regions render clearly. |
 | Render pieces | Complete | High | Developer / Codex-assisted | Static board rendering | Pieces render clearly on Yards, outer path, Home Paths, and Finish regions. |
-| Render stacks and hover inspection | Planned | High | Developer / Codex-assisted | Rendering | Stack summaries and hover panel display occupancy/protection/safe-square details. |
+| Render stacks and hover inspection | Complete | High | Developer / Codex-assisted | Rendering | Stack summaries and hover panel display occupancy/protection/safe-square details. |
 | Implement input handling | Complete | High | Developer / Codex-assisted | Screen flow | Dice clicks, legal piece selection, hover, and `ESC` pause map to facade commands. |
 
 ## Phase 6: UX Polish

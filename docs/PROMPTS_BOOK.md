@@ -1108,6 +1108,97 @@ Lessons learned:
 - Destination preview belongs at the facade boundary: once legal moves include destination data,
   Pygame can preview moves without duplicating movement rules.
 
+## Prompt 13
+
+Prompt ID: Prompt 13
+
+Title: Stack Rendering & Hover Inspection
+
+Goal: Replace the temporary multiple-occupancy placeholder with final compact stack summaries and a
+hover inspection popup, without changing gameplay rules.
+
+Context: Prompt 12 made dice rolling, legal piece selection, highlighting, and destination preview
+playable through the facade. Prompt 13 improves shared-square readability above the existing board
+geometry, rendering, interaction layer, and GameFacade.
+
+Full prompt or faithful prompt record: Prompt 13 was provided directly in chat. Its authoritative
+requirements included:
+
+- read only relevant UX, architecture, and TODO documentation;
+- render a compact summary when multiple pieces occupy the same logical outer square, using
+  notation such as `2r`, `3y`, or `2r 1b`;
+- color each summary component with the corresponding player color;
+- keep single-piece rendering unchanged;
+- show a hover inspection popup for occupied board squares with per-color counts;
+- indicate ordinary protected blocks and Safe Squares from public facade/state information derived
+  from authoritative game logic;
+- keep popups visible inside the application window where practical;
+- avoid movement animation, capture animation, dice animation, audio, no-legal timed notification,
+  additional gameplay rules, and Bot logic;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- launch the application and verify stack summaries and hover popups manually.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/__init__.py`
+- `src/ludo/app/facade.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/interaction.py`
+- `src/ludo/pygame_ui/render_models.py`
+- `src/ludo/pygame_ui/render_state.py`
+- `src/ludo/pygame_ui/screens.py`
+- `tests/integration/test_game_facade.py`
+- `tests/unit/pygame_ui/test_render_state.py`
+
+Constraints:
+
+- Do not implement animations, audio, final no-legal timed notification, additional gameplay
+  rules, or Bot logic.
+- Do not modify capture/block rules to simplify rendering.
+- Do not import internal movement/rule services into Pygame rendering.
+- Avoid screenshot-comparison tests.
+
+Verification performed:
+
+- Added facade integration coverage for public outer occupancy snapshots with safe/protected
+  status.
+- Added render-state tests for single pieces, same-color stacks, mixed-color stacks, 3+ color
+  stacks, large Safe Square stacks, protected-block status, Safe Square status, empty hover,
+  occupied hover counts, and popup bounds.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and Pygame launch/visual inspection.
+
+Result summary:
+
+- Added public `OuterOccupancySnapshot` data to facade snapshots.
+- Changed outer-square render grouping to use the shared global square instead of owner color, so
+  mixed-color stacks draw as one occupancy.
+- Added structured stack summary components and hover inspection models.
+- Rendered colored compact stack summaries for multiple occupancy while keeping normal single-piece
+  rendering.
+- Added hover inspection popups with per-color counts, `SAFE SQUARE`, and ordinary
+  `PROTECTED BLOCK` labels.
+- Wired mouse hover state through the interaction controller and game renderer.
+
+Issues discovered:
+
+- The domain correctly treats occupied Safe Squares as protected for capture purposes. The UI keeps
+  the labels distinct by showing `SAFE SQUARE` for Safe Squares and reserving `PROTECTED BLOCK` for
+  ordinary non-safe protected stacks.
+
+Follow-up/refinement:
+
+- Future polish can tune the exact visual density of stack summaries if the board art changes.
+- Movement/capture/dice animations and no-legal timed notification remain planned future work.
+
+Lessons learned:
+
+- Exposing occupancy metadata at the facade boundary keeps the Pygame layer visual-only while still
+  letting it present rules-derived safe/protected context accurately.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from ludo.app import GameFacadeError, LegalMoveSnapshot, MoveDestinationSnapshot
 from ludo.domain.turns import TurnPhase
 from ludo.geometry import BoardGeometry, ScreenRect
-from ludo.pygame_ui.render_state import build_gameplay_render_state
+from ludo.pygame_ui.render_models import OccupancyInspection
+from ludo.pygame_ui.render_state import (
+    build_gameplay_render_state,
+    build_occupancy_inspection,
+)
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
 
@@ -26,6 +30,7 @@ class GameplayInteractionController:
 
     geometry: BoardGeometry
     preview: DestinationPreview | None = None
+    inspection: OccupancyInspection | None = None
 
     def handle_click(self, position: tuple[int, int], controller: ScreenController) -> bool:
         """Handle one gameplay click and return whether it was consumed."""
@@ -44,11 +49,13 @@ class GameplayInteractionController:
     def handle_hover(self, position: tuple[int, int], controller: ScreenController) -> None:
         """Update legal destination preview for a mouse position."""
         self.preview = None
+        self.inspection = None
         if not _can_interact(controller):
             return
         snapshot = controller.snapshot()
         if snapshot is None:
             return
+        self.inspection = build_occupancy_inspection(snapshot, self.geometry, position)
         piece_id = self._legal_piece_at(position, snapshot)
         if piece_id is None:
             return
@@ -72,6 +79,7 @@ class GameplayInteractionController:
         except GameFacadeError:
             return False
         self.preview = None
+        self.inspection = None
         return True
 
     def _try_choose_piece(self, controller: ScreenController, piece_id: str) -> bool:
@@ -82,6 +90,7 @@ class GameplayInteractionController:
         except GameFacadeError:
             return False
         self.preview = None
+        self.inspection = None
         return True
 
     def _legal_piece_at(self, position: tuple[int, int], snapshot) -> str | None:

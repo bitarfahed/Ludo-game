@@ -188,6 +188,44 @@ def test_capture_outcome_is_exposed_through_facade_result() -> None:
     assert result.bonus_reasons == frozenset({"capture"})
 
 
+def test_snapshot_exposes_outer_occupancy_safe_and_protected_status() -> None:
+    red_piece_1 = outer_piece("red-1", PlayerColor.RED, 2)
+    red_piece_2 = outer_piece("red-2", PlayerColor.RED, 2)
+    yellow_piece = outer_piece("yellow-1", PlayerColor.YELLOW, 26)
+    match = create_match(
+        [3],
+        (
+            replace(
+                Player(id="red", name="Red", color=PlayerColor.RED),
+                pieces=(
+                    red_piece_1,
+                    red_piece_2,
+                    outer_piece("red-3", PlayerColor.RED, 4),
+                    outer_piece("red-4", PlayerColor.RED, 5),
+                ),
+            ),
+            player_with_first_piece("yellow", PlayerColor.YELLOW, yellow_piece),
+        ),
+    )
+    match.turn_engine.set_occupancy(
+        OuterPathOccupancy(global_index=2, pieces=(red_piece_1, red_piece_2))
+    )
+    match.turn_engine.set_occupancy(
+        OuterPathOccupancy(global_index=0, pieces=(yellow_piece,))
+    )
+    facade = GameFacade.from_match(match)
+
+    occupancies = {
+        occupancy.global_index: occupancy for occupancy in facade.snapshot().outer_occupancies
+    }
+
+    assert [piece.id for piece in occupancies[2].pieces] == ["red-1", "red-2"]
+    assert not occupancies[2].is_safe
+    assert occupancies[2].is_protected
+    assert occupancies[0].is_safe
+    assert occupancies[0].is_protected
+
+
 def test_finish_outcome_ranking_and_match_completion_are_exposed() -> None:
     red_player = Player(id="red", name="Red", color=PlayerColor.RED)
     finishing_piece = home_piece("red-final", PlayerColor.RED, 4)

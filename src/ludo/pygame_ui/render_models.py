@@ -37,18 +37,53 @@ class PieceRenderItem:
 
 
 @dataclass(frozen=True, slots=True)
+class StackSummaryComponent:
+    """One colored count/symbol part of a stack summary."""
+
+    count: int
+    symbol: str
+    color_value: str
+
+    @property
+    def text(self) -> str:
+        """Return approved compact stack notation for this component."""
+        return f"{self.count}{self.symbol}"
+
+
+@dataclass(frozen=True, slots=True)
+class OccupancyInspectionLine:
+    """One count line in the hover inspection panel."""
+
+    color_name: str
+    color_value: str
+    count: int
+
+
+@dataclass(frozen=True, slots=True)
+class OccupancyInspection:
+    """Detailed hover inspection state for an occupied board square."""
+
+    anchor: ScreenRect
+    popup: ScreenRect
+    lines: tuple[OccupancyInspectionLine, ...]
+    is_safe: bool = False
+    is_protected: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class PieceRenderGroup:
     """Pieces sharing one render location."""
 
     center: tuple[int, int]
     bounds: ScreenRect
     pieces: tuple[PieceRenderItem, ...]
-    placeholder_label: str | None = None
+    summary_components: tuple[StackSummaryComponent, ...] = ()
+    inspection: OccupancyInspection | None = None
 
     @property
     def is_stack_placeholder(self) -> bool:
         """Return whether this group should draw a compact placeholder."""
-        return self.placeholder_label is not None
+        return bool(self.summary_components)
 
 
 @dataclass(frozen=True, slots=True)

@@ -93,6 +93,16 @@ class LegalMoveSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class OuterOccupancySnapshot:
+    """Read-only public view of one occupied outer-path square."""
+
+    global_index: int
+    pieces: tuple[PieceSnapshot, ...]
+    is_safe: bool
+    is_protected: bool
+
+
+@dataclass(frozen=True, slots=True)
 class GameSnapshot:
     """Read-only public match state for UI and future controllers."""
 
@@ -104,6 +114,7 @@ class GameSnapshot:
     decision_timeout_seconds: int
     current_dice_value: int | None
     legal_moves: tuple[LegalMoveSnapshot, ...]
+    outer_occupancies: tuple[OuterOccupancySnapshot, ...]
     rankings: tuple[RankingSnapshot, ...]
     is_complete: bool
 
@@ -182,6 +193,7 @@ class GameFacade:
             decision_timeout_seconds=0 if match.is_complete else DECISION_TIMEOUT_SECONDS,
             current_dice_value=None if match.is_complete else match.turn_engine.last_roll,
             legal_moves=self.legal_moves(),
+            outer_occupancies=_outer_occupancy_snapshots(match),
             rankings=rankings,
             is_complete=match.is_complete,
         )
@@ -357,6 +369,22 @@ def _piece_snapshot(piece: Piece) -> PieceSnapshot:
         owner_color=piece.owner_color,
         state=piece.state,
         path_progress=piece.path_progress,
+    )
+
+
+def _outer_occupancy_snapshots(match: Match) -> tuple[OuterOccupancySnapshot, ...]:
+    return tuple(
+        OuterOccupancySnapshot(
+            global_index=occupancy.global_index,
+            pieces=tuple(_piece_snapshot(piece) for piece in occupancy.pieces),
+            is_safe=match.turn_engine.collision_resolver.topology.is_safe_outer_position(
+                occupancy.global_index
+            ),
+            is_protected=match.turn_engine.collision_resolver.is_protected_occupancy(occupancy),
+        )
+        for occupancy in sorted(
+            match.turn_engine.outer_occupancies.values(), key=lambda item: item.global_index
+        )
     )
 
 

@@ -11,6 +11,7 @@ from ludo.pygame_ui.interaction import DestinationPreview
 from ludo.pygame_ui.render_models import (
     DiceHudState,
     GameplayRenderState,
+    OccupancyInspection,
     PieceRenderGroup,
     PlayerHudState,
 )
@@ -32,6 +33,7 @@ class GameplayRenderer:
         font: pygame.font.Font,
         small_font: pygame.font.Font,
         preview: DestinationPreview | None = None,
+        inspection: OccupancyInspection | None = None,
     ) -> None:
         """Draw pieces, dice, player status, and timer HUD."""
         state = build_gameplay_render_state(snapshot, self.geometry)
@@ -42,6 +44,8 @@ class GameplayRenderer:
             self._draw_destination_preview(surface, preview, small_font)
         self._draw_pieces(surface, state, font, small_font)
         self._draw_legal_piece_rings(surface, state, snapshot)
+        if inspection is not None:
+            self._draw_occupancy_inspection(surface, inspection, small_font)
 
     def _draw_pieces(
         self,
@@ -52,7 +56,7 @@ class GameplayRenderer:
     ) -> None:
         for group in state.pieces:
             if group.is_stack_placeholder:
-                self._draw_stack_placeholder(surface, group, small_font)
+                self._draw_stack_summary(surface, group, small_font)
             else:
                 piece = group.pieces[0]
                 color = theme.color_for_name(piece.color_value)
@@ -63,14 +67,40 @@ class GameplayRenderer:
                 label = font.render(piece.symbol, True, theme.SURFACE)
                 surface.blit(label, label.get_rect(center=group.center))
 
-    def _draw_stack_placeholder(
+    def _draw_stack_summary(
         self, surface: pygame.Surface, group: PieceRenderGroup, font: pygame.font.Font
     ) -> None:
-        rect = pygame.Rect(group.center[0] - 18, group.center[1] - 11, 36, 22)
-        pygame.draw.rect(surface, theme.TEXT, rect, border_radius=5)
-        pygame.draw.rect(surface, theme.SURFACE, rect, width=1, border_radius=5)
-        label = font.render(group.placeholder_label or "", True, theme.SURFACE)
-        surface.blit(label, label.get_rect(center=rect.center))
+        component_surfaces = [
+            (
+                component,
+                font.render(component.text, True, theme.color_for_name(component.color_value)),
+            )
+            for component in group.summary_components
+        ]
+        if not component_surfaces:
+            return
+        row_width = max(surface.get_width() for _, surface in component_surfaces)
+        total_width = sum(surface.get_width() for _, surface in component_surfaces)
+        single_row_width = total_width + max(0, len(component_surfaces) - 1) * 5
+        max_width = max(group.bounds.width - 6, 28)
+        use_column = single_row_width > max_width
+        rect_width = min(max_width, row_width + 12 if use_column else single_row_width + 12)
+        rect_height = (len(component_surfaces) * 16 + 8) if use_column else 24
+        rect = pygame.Rect(0, 0, rect_width, rect_height)
+        rect.center = group.center
+        pygame.draw.rect(surface, theme.SURFACE, rect, border_radius=5)
+        pygame.draw.rect(surface, theme.TEXT, rect, width=2, border_radius=5)
+        if use_column:
+            y = rect.y + 5
+            for _, label in component_surfaces:
+                surface.blit(label, label.get_rect(center=(rect.centerx, y + 7)))
+                y += 16
+            return
+        x = rect.x + 6
+        for _, label in component_surfaces:
+            label_rect = label.get_rect(midleft=(x, rect.centery))
+            surface.blit(label, label_rect)
+            x = label_rect.right + 5
 
     def _draw_dice(
         self,
@@ -155,6 +185,36 @@ class GameplayRenderer:
         pygame.draw.rect(surface, theme.SURFACE, background, border_radius=4)
         pygame.draw.rect(surface, theme.BORDER, background, width=1, border_radius=4)
         surface.blit(label, label_rect)
+
+    @staticmethod
+    def _draw_occupancy_inspection(
+        surface: pygame.Surface, inspection: OccupancyInspection, font: pygame.font.Font
+    ) -> None:
+        rect = _to_pygame_rect(inspection.popup)
+        pygame.draw.rect(surface, theme.SURFACE, rect, border_radius=6)
+        pygame.draw.rect(surface, theme.TEXT, rect, width=2, border_radius=6)
+        y = rect.y + 8
+        if inspection.is_safe:
+            y = _draw_inspection_status(surface, font, "SAFE SQUARE", y, rect)
+        if inspection.is_protected:
+            y = _draw_inspection_status(surface, font, "PROTECTED BLOCK", y, rect)
+        for line in inspection.lines:
+            color = theme.color_for_name(line.color_value)
+            swatch = pygame.Rect(rect.x + 10, y + 4, 8, 8)
+            pygame.draw.rect(surface, color, swatch, border_radius=2)
+            label = font.render(f"{line.color_name} x {line.count}", True, theme.TEXT)
+            surface.blit(label, (rect.x + 24, y - 1))
+            y += 22
+
+
+def _draw_inspection_status(
+    surface: pygame.Surface, font: pygame.font.Font, text: str, y: int, rect: pygame.Rect
+) -> int:
+    label = font.render(text, True, theme.TEXT)
+    background = pygame.Rect(rect.x + 8, y - 2, rect.width - 16, 18)
+    pygame.draw.rect(surface, theme.BACKGROUND, background, border_radius=4)
+    surface.blit(label, label.get_rect(center=background.center))
+    return y + 22
 
 
 def _to_pygame_rect(rect: ScreenRect) -> pygame.Rect:
