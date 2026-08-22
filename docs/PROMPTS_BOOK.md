@@ -196,6 +196,88 @@ Lessons learned:
 
 - Keep the bootstrap intentionally small so later prompts can introduce behavior under tests.
 
+## Prompt 2
+
+Prompt ID: Prompt 2
+
+Title: Core Domain Models
+
+Goal: Implement the minimal core domain models needed to represent Ludo player colors, piece states,
+pieces, and players while avoiding board topology, movement, rules, turns, timers, ranking, SDK, or
+Pygame work.
+
+Context: Documentation and repository/tooling bootstrap were already complete. The approved rules
+require exactly four player colors, exactly four piece states, exactly four pieces per active
+player, no fake players for inactive colors, and a 10-character maximum player name.
+
+Full prompt or faithful prompt record: The Prompt 2 request was provided as an attached pasted text
+file. Its authoritative requirements included:
+
+- read the existing documentation and `pyproject.toml`;
+- follow RED -> GREEN -> REFACTOR;
+- create a `PieceState` enum with `IN_YARD`, `ON_OUTER_PATH`, `ON_HOME_PATH`, and `FINISHED`;
+- create a `PlayerColor` enum with `RED`, `GREEN`, `YELLOW`, and `BLUE`;
+- implement a small focused `Piece` model with stable identity, owner color, state, and minimal
+  logical progress/location information;
+- implement a focused `Player` model with stable identity, name, assigned color, and exactly four
+  owned pieces;
+- enforce player-name and model invariants;
+- write meaningful unit tests;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`.
+
+Files expected to change:
+
+- `README.md`
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/colors.py`
+- `src/ludo/domain/pieces.py`
+- `src/ludo/domain/players.py`
+- `tests/unit/domain/test_piece.py`
+- `tests/unit/domain/test_player.py`
+
+Constraints:
+
+- Do not implement board topology.
+- Do not implement movement or legal moves.
+- Do not implement captures, blocks, bonus rolls, Triple Six, dice, turns, timers, ranking, SDK, or
+  Pygame.
+- Do not store screen coordinates, rendering state, animation state, or UI state in domain models.
+- Keep public exports deliberate and minimal.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+
+Result summary:
+
+- Added `PlayerColor` and `PieceState` enums.
+- Added immutable `Piece` and `Player` dataclasses with validation.
+- Added minimal path-progress metadata for pieces without implementing movement.
+- Added public domain exports for the new types and constants.
+- Added 24 focused unit tests for model construction and invariants.
+
+Issues discovered:
+
+- The approved docs do not define whether player names should be trimmed. The implementation strips
+  surrounding whitespace and rejects blank normalized names as the conservative domain policy.
+- No conflicts with approved gameplay documentation were found.
+
+Follow-up/refinement:
+
+- Implement board topology in a later TDD milestone.
+- Keep movement, legal-move, turn, timer, ranking, and Pygame concerns out of these models.
+
+Lessons learned:
+
+- `path_progress` gives future movement code a clean logical hook while keeping Yard and Finished
+  pieces off the traversable path.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

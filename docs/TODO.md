@@ -34,8 +34,8 @@ Default owner: Developer / Codex-assisted.
 
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
-| Define colors and piece states | Planned | High | Developer / Codex-assisted | Source/test skeleton | Enums or equivalent types represent colors and piece states. |
-| Define player and piece models | Planned | High | Developer / Codex-assisted | Colors and states | Active players own 4 pieces; inactive colors have none. |
+| Define colors and piece states | Complete | High | Developer / Codex-assisted | Source/test skeleton | Enums or equivalent types represent colors and piece states. |
+| Define player and piece models | Complete | High | Developer / Codex-assisted | Colors and states | Active players own 4 pieces; inactive colors have none. |
 | Define board topology | Planned | High | Developer / Codex-assisted | Colors | 52 outer positions, 5 Home-Path squares, starts, and 8 safe squares are represented and tested. |
 | Add deterministic randomness abstraction | Planned | High | Developer / Codex-assisted | Source skeleton | Dice and color assignment can be controlled in tests. |
 | Implement color assignment | Planned | High | Developer / Codex-assisted | Randomness abstraction | 2-player opposite pairs, 3-player random inactive color, and 4-player assignment are tested. |

@@ -1,8 +1,8 @@
 # Ludo
 
-Ludo is a planned professional Python desktop game built with Pygame. The project is currently in
-the repository/tooling bootstrap stage: no playable game, behavioral tests, assets, gameplay rules,
-or Pygame application logic have been implemented yet.
+Ludo is a planned professional Python desktop game built with Pygame. The project currently has its
+repository/tooling bootstrap and minimal player/piece domain models in place. No playable game,
+board topology, movement rules, assets, or Pygame application logic have been implemented yet.
 
 The first playable version will support local Human vs Human matches for 2, 3, or 4 players. AI,
 online play, networking, accounts, databases, and external APIs are intentionally out of scope for
@@ -69,11 +69,13 @@ Development setup:
 
 ```bash
 uv sync
+uv run pytest
+uv run pytest --cov
 uv run ruff check .
 ```
 
-`uv run pytest` will become part of the normal verification workflow once meaningful tests are
-added. The current test directories are present, but behavioral tests have not been written yet.
+The current tests cover only the implemented core domain models. Broader gameplay tests will be
+added as later milestones introduce board topology, movement, rules, turns, and UI behavior.
 
 The approved initial application version is `1.00`. Python package metadata stores the normalized
 PEP 440 version `1.0`, which is the authoritative package representation of that application
@@ -127,7 +129,8 @@ Future gameplay source, behavioral tests, and assets are planned but not yet cre
 
 ## Development Status
 
-Status: Repository and tooling bootstrap complete. Gameplay implementation has not started.
+Status: Core player and piece domain models complete. Board topology, movement/rules, turns, and
+Pygame implementation have not started.
 
 The roadmap in [docs/TODO.md](docs/TODO.md) distinguishes completed documentation work from future
 implementation tasks.
