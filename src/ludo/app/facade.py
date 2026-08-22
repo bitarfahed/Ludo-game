@@ -8,6 +8,7 @@ from enum import StrEnum
 
 from ludo.domain.colors import PlayerColor
 from ludo.domain.match import ColorRandomizer, Match
+from ludo.domain.movement import MoveDestination, MoveDestinationKind
 from ludo.domain.pieces import Piece, PieceState
 from ludo.domain.players import Player
 from ludo.domain.turns import (
@@ -70,6 +71,16 @@ class RankingSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class MoveDestinationSnapshot:
+    """Read-only destination for a legal move preview."""
+
+    kind: MoveDestinationKind
+    global_outer_index: int | None = None
+    home_color: PlayerColor | None = None
+    home_index: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class LegalMoveSnapshot:
     """Read-only public view of a currently selectable piece."""
 
@@ -77,6 +88,8 @@ class LegalMoveSnapshot:
     owner_color: PlayerColor
     state: PieceState
     path_progress: int | None
+    dice_value: int
+    destination: MoveDestinationSnapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,7 +167,7 @@ class GameFacade:
     def snapshot(self) -> GameSnapshot:
         """Return an immutable public snapshot of the current match."""
         match = self._require_match()
-        active_players = tuple(_player_snapshot(player) for player in match.players)
+        active_players = tuple(_player_snapshot(player) for player in match.turn_engine.players)
         rankings = _ranking_snapshots(match)
         ranked_players = tuple(
             _player_snapshot(entry.player, entry.rank) for entry in match.final_standings
@@ -195,12 +208,22 @@ class GameFacade:
         match = self._require_match()
         if match.is_complete or match.turn_engine.phase is not TurnPhase.WAITING_FOR_MOVE:
             return ()
+        if match.turn_engine.last_roll is None:
+            return ()
         piece_by_id = {piece.id: piece for piece in match.turn_engine.current_player.pieces}
-        return tuple(
-            _legal_move_snapshot(piece_by_id[piece_id])
-            for piece_id in match.turn_engine.legal_piece_ids
-            if piece_id in piece_by_id
-        )
+        legal_moves = []
+        for piece_id in match.turn_engine.legal_piece_ids:
+            piece = piece_by_id.get(piece_id)
+            if piece is None:
+                continue
+            proposal = match.turn_engine.movement_rules.propose_move(
+                piece, match.turn_engine.last_roll
+            )
+            if proposal is not None:
+                legal_moves.append(
+                    _legal_move_snapshot(piece, match.turn_engine.last_roll, proposal.destination)
+                )
+        return tuple(legal_moves)
 
     def rankings(self) -> tuple[RankingSnapshot, ...]:
         """Return standings in rank order."""
@@ -337,12 +360,37 @@ def _piece_snapshot(piece: Piece) -> PieceSnapshot:
     )
 
 
-def _legal_move_snapshot(piece: Piece) -> LegalMoveSnapshot:
+def _legal_move_snapshot(
+    piece: Piece, dice_value: int, destination: MoveDestination
+) -> LegalMoveSnapshot:
     return LegalMoveSnapshot(
         piece_id=piece.id,
         owner_color=piece.owner_color,
         state=piece.state,
         path_progress=piece.path_progress,
+        dice_value=dice_value,
+        destination=_destination_snapshot(destination),
+    )
+
+
+def _destination_snapshot(destination: MoveDestination) -> MoveDestinationSnapshot:
+    if destination.kind is MoveDestinationKind.HOME_PATH:
+        if destination.home_path_position is None:
+            msg = "Home-Path destination requires a home path position."
+            raise ValueError(msg)
+        return MoveDestinationSnapshot(
+            kind=destination.kind,
+            home_color=destination.home_path_position.color,
+            home_index=destination.home_path_position.index,
+        )
+    if destination.kind is MoveDestinationKind.FINISHED:
+        return MoveDestinationSnapshot(
+            kind=destination.kind,
+            home_color=destination.color,
+        )
+    return MoveDestinationSnapshot(
+        kind=destination.kind,
+        global_outer_index=destination.global_outer_index,
     )
 
 

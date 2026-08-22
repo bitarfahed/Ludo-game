@@ -7,6 +7,7 @@ import pygame
 from ludo.app import GameSnapshot
 from ludo.geometry import BoardGeometry, ScreenRect
 from ludo.pygame_ui import theme
+from ludo.pygame_ui.interaction import DestinationPreview
 from ludo.pygame_ui.render_models import (
     DiceHudState,
     GameplayRenderState,
@@ -30,13 +31,17 @@ class GameplayRenderer:
         snapshot: GameSnapshot,
         font: pygame.font.Font,
         small_font: pygame.font.Font,
+        preview: DestinationPreview | None = None,
     ) -> None:
         """Draw pieces, dice, player status, and timer HUD."""
         state = build_gameplay_render_state(snapshot, self.geometry)
         for player in state.players:
             self._draw_player_hud(surface, player, font, small_font)
         self._draw_dice(surface, state.dice, font, small_font)
+        if preview is not None:
+            self._draw_destination_preview(surface, preview, small_font)
         self._draw_pieces(surface, state, font, small_font)
+        self._draw_legal_piece_rings(surface, state, snapshot)
 
     def _draw_pieces(
         self,
@@ -119,6 +124,37 @@ class GameplayRenderer:
         seconds = player.seconds_remaining if player.seconds_remaining is not None else 0
         label = font.render(f"{seconds}s", True, theme.TEXT)
         surface.blit(label, label.get_rect(center=rect.center))
+
+    def _draw_legal_piece_rings(
+        self,
+        surface: pygame.Surface,
+        state: GameplayRenderState,
+        snapshot: GameSnapshot,
+    ) -> None:
+        legal_ids = {move.piece_id for move in snapshot.legal_moves}
+        if not legal_ids:
+            return
+        for group in state.pieces:
+            if not any(piece.piece_id in legal_ids for piece in group.pieces):
+                continue
+            radius = min(group.bounds.width, group.bounds.height) // 2 + 4
+            radius = max(14, min(radius, self.geometry.cell_size // 2 + 4))
+            pygame.draw.circle(surface, theme.ACCENT_DARK, group.center, radius, width=3)
+
+    @staticmethod
+    def _draw_destination_preview(
+        surface: pygame.Surface,
+        preview: DestinationPreview,
+        font: pygame.font.Font,
+    ) -> None:
+        rect = _to_pygame_rect(preview.bounds)
+        pygame.draw.rect(surface, theme.ACCENT_DARK, rect, width=3, border_radius=4)
+        label = font.render(preview.hint, True, theme.TEXT)
+        label_rect = label.get_rect(midbottom=(rect.centerx, rect.y - 4))
+        background = label_rect.inflate(8, 4)
+        pygame.draw.rect(surface, theme.SURFACE, background, border_radius=4)
+        pygame.draw.rect(surface, theme.BORDER, background, width=1, border_radius=4)
+        surface.blit(label, label_rect)
 
 
 def _to_pygame_rect(rect: ScreenRect) -> pygame.Rect:

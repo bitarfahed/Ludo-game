@@ -10,6 +10,7 @@ from ludo.pygame_ui import layout, theme
 from ludo.pygame_ui.board_renderer import BoardRenderer
 from ludo.pygame_ui.controls import Button, draw_text
 from ludo.pygame_ui.gameplay_renderer import GameplayRenderer
+from ludo.pygame_ui.interaction import GameplayInteractionController
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
 
@@ -22,6 +23,7 @@ class ScreenRenderer:
         self.small_font = pygame.font.Font(None, 24)
         self.board_renderer = BoardRenderer()
         self.gameplay_renderer = GameplayRenderer(self.board_renderer.geometry)
+        self.interaction = GameplayInteractionController(self.board_renderer.geometry)
         self.active_name_index: int | None = None
 
     def draw(self, surface: pygame.Surface, controller: ScreenController) -> None:
@@ -49,12 +51,19 @@ class ScreenRenderer:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self._handle_click(event.pos, controller)
             return
+        if event.type == pygame.MOUSEMOTION:
+            self.interaction.handle_hover(event.pos, controller)
+            return
         if event.type == pygame.KEYDOWN and controller.screen is ScreenState.PLAYER_SETUP:
             self._handle_setup_key(event, controller)
 
     def _handle_click(self, position: tuple[int, int], controller: ScreenController) -> None:
         if controller.paused:
             self._apply_command(_command_at(position, layout.pause_buttons()), controller)
+            return
+        if controller.screen is ScreenState.GAME and self.interaction.handle_click(
+            position, controller
+        ):
             return
         buttons = layout.buttons_for(controller)
         command = _command_at(position, buttons)
@@ -122,7 +131,13 @@ class ScreenRenderer:
         self.board_renderer.draw(surface, snapshot, self.font, self.small_font)
         current = snapshot.current_player.name if snapshot.current_player else "None"
         draw_text(surface, self.small_font, f"Current: {current}", (28, 24), theme.TEXT)
-        self.gameplay_renderer.draw(surface, snapshot, self.font, self.small_font)
+        self.gameplay_renderer.draw(
+            surface,
+            snapshot,
+            self.font,
+            self.small_font,
+            self.interaction.preview,
+        )
 
     def _draw_results(self, surface: pygame.Surface, controller: ScreenController) -> None:
         _draw_title(surface, self.title_font, "Results")

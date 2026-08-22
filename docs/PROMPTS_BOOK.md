@@ -1019,6 +1019,95 @@ Lessons learned:
 - Preparing render state separately from drawing keeps UI tests stable while preserving the
   gameplay/domain boundary.
 
+## Prompt 12
+
+Prompt ID: Prompt 12
+
+Title: Gameplay Interaction & Legal Move UX
+
+Goal: Make the board actively playable through mouse dice rolling, legal piece selection,
+legal-move highlighting, and destination preview while keeping authoritative gameplay rules inside
+the facade/domain layers.
+
+Context: Prompt 11 rendered live pieces, dice, player status, and timer HUD. Prompt 12 adds
+gameplay mouse interaction above that rendering without implementing animation, final stack UX, or
+audio.
+
+Full prompt or faithful prompt record: Prompt 12 was provided directly in chat. Its authoritative
+requirements included:
+
+- read only relevant UX, architecture, and TODO documentation;
+- allow center dice clicks only during the valid roll phase;
+- route dice and piece actions through `GameFacade`;
+- update displayed dice result from facade state;
+- query legal moves through the facade after a valid roll;
+- make only legal pieces selectable and visually highlighted;
+- require explicit selection even when exactly one legal move exists;
+- preview the resolved destination when hovering a legal piece using facade/public move information;
+- submit legal piece clicks through the facade and update rendered state;
+- avoid mutating pieces, players, occupancy, or turn state in the UI;
+- handle outside clicks, inactive/illegal piece clicks, dice clicks in move phase, piece clicks in
+  roll phase, and repeated clicks gracefully;
+- keep hit-testing/input separate from game rules;
+- add non-screenshot interaction/state tests;
+- avoid final stack-summary rendering, hover stack inspection, movement/capture animation, dice
+  animation, audio, final 5-second no-legal visual flow, and Bot logic;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, `uv run ruff check .`, and launch the
+  application for manual verification.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/__init__.py`
+- `src/ludo/app/facade.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/interaction.py`
+- `src/ludo/pygame_ui/screens.py`
+- `tests/unit/pygame_ui/test_interaction.py`
+
+Constraints:
+
+- Do not implement final stack summary UX, hover stack inspection popup, piece movement animation,
+  capture animation, dice animation, audio, final no-legal 5-second visual flow, or Bot logic.
+- Do not modify approved domain rules.
+- Do not import internal movement/rule services into Pygame.
+
+Verification performed:
+
+- Added interaction tests for dice click phase rules, facade-routed rolling, legal/illegal piece
+  selection, no auto-selection for one legal move, legal hover destination preview, outside-click
+  safety, roll/move phase safety, no-legal rolls, and repeated-click no-ops.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and Pygame launch/visual inspection.
+
+Result summary:
+
+- Added `GameplayInteractionController` for gameplay mouse clicks and hover state.
+- Added public legal-move destination snapshots to the facade for UI previews.
+- Added legal piece rings and destination preview rendering.
+- Connected dice and legal piece clicks from the Pygame game screen to the facade.
+- Fixed facade snapshots to read active live players from the turn engine so moved pieces appear
+  correctly in UI-facing state.
+
+Issues discovered:
+
+- Prompt 12 exposed a stale facade snapshot path: live piece updates were in `TurnEngine.players`
+  while `GameFacade.snapshot()` still read active players from `Match.players`. The facade now uses
+  the turn engine for active live player state and ranked entries for completed players.
+
+Follow-up/refinement:
+
+- Future no-legal prompt should add the 5-second user-facing notification flow.
+- Prompt 13 should replace the temporary multi-piece placeholder with final stack summary and hover
+  inspection UX.
+
+Lessons learned:
+
+- Destination preview belongs at the facade boundary: once legal moves include destination data,
+  Pygame can preview moves without duplicating movement rules.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do
