@@ -278,6 +278,86 @@ Lessons learned:
 - `path_progress` gives future movement code a clean logical hook while keeping Yard and Finished
   pieces off the traversable path.
 
+## Prompt 3
+
+Prompt ID: Prompt 3
+
+Title: Board Topology & Paths
+
+Goal: Implement the logical board topology and path representation for the shared 52-square outer
+path, color start positions, 8 safe outer squares, 5-square private Home Paths, separate Finished
+destinations, and player-relative to global outer-index mapping.
+
+Context: Prompt 2 had already added the core player and piece models. The approved board
+architecture requires a purely logical 1D topology independent from screen coordinates and separate
+from mutable piece state.
+
+Full prompt or faithful prompt record: Prompt 3 was provided directly in chat. Its authoritative
+requirements included:
+
+- read the relevant board rules and architecture documentation;
+- preserve existing Prompt 2 domain models;
+- represent exactly 52 shared outer positions;
+- represent exactly 4 player start positions;
+- represent exactly 8 safe outer positions with all starts safe;
+- represent exactly 5 private Home-Path positions per color;
+- keep Finished conceptually separate from Home Path squares;
+- map player-relative outer progress to the shared global outer-path index;
+- handle wraparound on the 52-square path;
+- write focused unit tests;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/board.py`
+- `tests/unit/domain/test_board.py`
+
+Constraints:
+
+- Do not implement piece movement.
+- Do not implement legal-move calculation.
+- Do not implement Yard exit, exact-roll logic, captures, blocks, dice, bonus rolls, Triple Six,
+  turns, timers, ranking, SDK/GameFacade, Pygame, screen coordinates, or rendering.
+- Keep topology constants separate from mutable piece state.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+
+Result summary:
+
+- Added immutable logical `BoardTopology`.
+- Added `HomePathPosition` and `FinishedDestination` value objects.
+- Added board constants for 52 outer positions and 5 Home-Path positions.
+- Added default start positions Red 0, Green 13, Yellow 26, Blue 39.
+- Added default safe squares `{0, 8, 13, 21, 26, 34, 39, 47}`.
+- Added 29 focused topology tests, bringing the test suite to 53 tests.
+
+Issues discovered:
+
+- The approved documentation requires color-specific starts but does not prescribe exact numeric
+  start indices or star-safe indices. The implementation uses evenly spaced starts every 13 squares
+  and star-safe positions 8 squares after each start.
+- No conflicts with approved gameplay documentation were found.
+
+Follow-up/refinement:
+
+- Future movement/rules code should consume `BoardTopology` rather than duplicating topology
+  constants.
+- Board geometry/rendering should map these logical positions to pixels in a later UI milestone.
+
+Lessons learned:
+
+- Keeping Finished as a distinct value object makes it hard to accidentally treat it as a sixth
+  Home-Path square.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do
