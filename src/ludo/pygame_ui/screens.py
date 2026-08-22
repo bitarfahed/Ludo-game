@@ -9,6 +9,7 @@ import pygame
 from ludo.pygame_ui import layout, theme
 from ludo.pygame_ui.board_renderer import BoardRenderer
 from ludo.pygame_ui.controls import Button, draw_text
+from ludo.pygame_ui.gameplay_renderer import GameplayRenderer
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
 
@@ -20,6 +21,7 @@ class ScreenRenderer:
         self.font = pygame.font.Font(None, 30)
         self.small_font = pygame.font.Font(None, 24)
         self.board_renderer = BoardRenderer()
+        self.gameplay_renderer = GameplayRenderer(self.board_renderer.geometry)
         self.active_name_index: int | None = None
 
     def draw(self, surface: pygame.Surface, controller: ScreenController) -> None:
@@ -120,6 +122,7 @@ class ScreenRenderer:
         self.board_renderer.draw(surface, snapshot, self.font, self.small_font)
         current = snapshot.current_player.name if snapshot.current_player else "None"
         draw_text(surface, self.small_font, f"Current: {current}", (28, 24), theme.TEXT)
+        self.gameplay_renderer.draw(surface, snapshot, self.font, self.small_font)
 
     def _draw_results(self, surface: pygame.Surface, controller: ScreenController) -> None:
         _draw_title(surface, self.title_font, "Results")

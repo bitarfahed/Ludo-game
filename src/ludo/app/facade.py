@@ -10,7 +10,14 @@ from ludo.domain.colors import PlayerColor
 from ludo.domain.match import ColorRandomizer, Match
 from ludo.domain.pieces import Piece, PieceState
 from ludo.domain.players import Player
-from ludo.domain.turns import Clock, Dice, TurnEvent, TurnEventKind, TurnPhase
+from ludo.domain.turns import (
+    DECISION_TIMEOUT_SECONDS,
+    Clock,
+    Dice,
+    TurnEvent,
+    TurnEventKind,
+    TurnPhase,
+)
 
 
 class GameFacadeError(ValueError):
@@ -81,6 +88,8 @@ class GameSnapshot:
     current_player: PlayerSnapshot | None
     phase: TurnPhase | None
     seconds_remaining: int
+    decision_timeout_seconds: int
+    current_dice_value: int | None
     legal_moves: tuple[LegalMoveSnapshot, ...]
     rankings: tuple[RankingSnapshot, ...]
     is_complete: bool
@@ -157,6 +166,8 @@ class GameFacade:
             current_player=current_player,
             phase=None if match.is_complete else match.turn_engine.phase,
             seconds_remaining=0 if match.is_complete else match.turn_engine.seconds_remaining,
+            decision_timeout_seconds=0 if match.is_complete else DECISION_TIMEOUT_SECONDS,
+            current_dice_value=None if match.is_complete else match.turn_engine.last_roll,
             legal_moves=self.legal_moves(),
             rankings=rankings,
             is_complete=match.is_complete,

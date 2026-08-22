@@ -26,7 +26,7 @@ class BoardRenderer:
     ) -> None:
         """Draw all static board regions."""
         _draw_shadowed_rect(surface, self.geometry.board_rect, theme.SURFACE)
-        self._draw_yards(surface, snapshot, font, small_font)
+        self._draw_yards(surface, snapshot, font)
         self._draw_outer_path(surface, font)
         self._draw_home_paths(surface)
         self._draw_finish_regions(surface, small_font)
@@ -37,38 +37,20 @@ class BoardRenderer:
         surface: pygame.Surface,
         snapshot: GameSnapshot,
         font: pygame.font.Font,
-        small_font: pygame.font.Font,
     ) -> None:
         players_by_color = {player.color: player for player in snapshot.players}
         current_color = snapshot.current_player.color if snapshot.current_player else None
         for color in PlayerColor:
             yard = self.geometry.yard_region(color)
-            active = color == current_color
             inactive = color in snapshot.inactive_colors
             base = _muted_color(color) if inactive else _soft_color(color)
             _draw_shadowed_rect(surface, yard, base)
-            border_width = 4 if active else 2
+            border_width = 2 if inactive or color != current_color else 4
             pygame.draw.rect(surface, _color(color), _to_pygame_rect(yard), border_width)
             self._draw_yard_piece_placeholders(surface, color, inactive)
-            label = players_by_color[color].name if color in players_by_color else "Inactive"
-            label_color = theme.TEXT_MUTED if inactive else theme.TEXT
-            draw_text(
-                surface,
-                font,
-                label,
-                _rect_text_pos(self.geometry.player_label_area(color)),
-                label_color,
-            )
-            timer = self.geometry.timer_area(color)
-            pygame.draw.rect(surface, theme.SURFACE, _to_pygame_rect(timer), border_radius=4)
-            pygame.draw.rect(
-                surface,
-                theme.BORDER,
-                _to_pygame_rect(timer),
-                width=1,
-                border_radius=4,
-            )
-            draw_text(surface, small_font, "Timer", (timer.x + 8, timer.y + 2), theme.TEXT_MUTED)
+            if color not in players_by_color:
+                label_area = self.geometry.player_label_area(color)
+                draw_text(surface, font, "Inactive", _rect_text_pos(label_area), theme.TEXT_MUTED)
 
     def _draw_yard_piece_placeholders(
         self, surface: pygame.Surface, color: PlayerColor, inactive: bool

@@ -932,6 +932,93 @@ Lessons learned:
 
 - A 15x15 grid gives a recognizable board while keeping coordinates centralized and simple to test.
 
+## Prompt 11
+
+Prompt ID: Prompt 11
+
+Title: Pieces, Dice & Gameplay HUD
+
+Goal: Render live match state on top of the static board: pieces, center dice, current-player cues,
+player status, and timer HUD, without implementing mouse gameplay interaction.
+
+Context: Prompt 10 added board geometry and static board rendering. Prompt 11 consumes public
+facade snapshots and existing board geometry to place live gameplay presentation.
+
+Full prompt or faithful prompt record: Prompt 11 was provided directly in chat. Its authoritative
+requirements included:
+
+- read only relevant UX, architecture, and TODO documentation;
+- render active pieces according to `IN_YARD`, `ON_OUTER_PATH`, `ON_HOME_PATH`, and `FINISHED`;
+- use geometry for all placement rather than domain screen coordinates;
+- render compact circular pieces with color symbols `r`, `g`, `y`, and `b`;
+- render single occupancy as a normal piece;
+- render a temporary compact placeholder for multiple occupancy without implementing final stack UX;
+- render the center dice area with current rolled value when available;
+- visually indicate dice availability during the roll phase without implementing click-to-roll;
+- show current-player feedback through name/status, Yard emphasis, and dice accent;
+- display numeric decision seconds and a small progress bar using facade timer state;
+- show compact player status such as finished-piece count or rank;
+- keep rendering focused and facade/public-state based;
+- add non-screenshot tests for render-state preparation;
+- avoid mouse click to roll, piece selection, legal-move highlighting, destination preview, final
+  stack UX, hover inspection, movement/capture animations, dice animation, audio, and Bot logic;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, `uv run ruff check .`, and launch the
+  application for visual verification.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/facade.py`
+- `src/ludo/pygame_ui/board_renderer.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/render_models.py`
+- `src/ludo/pygame_ui/render_state.py`
+- `src/ludo/pygame_ui/screens.py`
+- `tests/unit/pygame_ui/test_render_state.py`
+
+Constraints:
+
+- Do not implement gameplay clicking, piece selection, legal-move highlighting, destination
+  previews, final stack summaries, hover inspection, movement animation, capture animation, dice
+  animation, audio, or Bot logic.
+- Do not import internal movement/rule services into Pygame rendering.
+- Avoid screenshot-comparison tests.
+
+Verification performed:
+
+- Added render-state tests for Yard, outer, Home Path, Finished placement, temporary stack
+  placeholders, dice state, current-player state, timer state, inactive colors, and ranked status.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and Pygame launch/visual inspection.
+
+Result summary:
+
+- Added public facade snapshot fields for current dice value and decision timeout duration.
+- Added `render_state.py` to map facade snapshots and board geometry into draw-ready HUD state.
+- Added `GameplayRenderer` for live pieces, dice, player status, active-player cues, and timer bar.
+- Static board rendering now leaves live names/timers to the gameplay renderer while preserving
+  inactive corner labels.
+- Multiple occupancy currently renders as a compact placeholder label such as `2r`.
+
+Issues discovered:
+
+- The facade needed to expose current dice value and decision timeout in public snapshot state so
+  Pygame did not need to reach into the turn engine.
+
+Follow-up/refinement:
+
+- Prompt 13 should replace the temporary multiple-occupancy placeholder with the final stack summary
+  and hover inspection UX.
+- Future input work should use the already-rendered dice/piece state but route actions through the
+  facade.
+
+Lessons learned:
+
+- Preparing render state separately from drawing keeps UI tests stable while preserving the
+  gameplay/domain boundary.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

@@ -126,12 +126,15 @@ class BoardGeometry:
     def yard_piece_positions(self, color: PlayerColor) -> tuple[tuple[int, int], ...]:
         """Return four placeholder Yard piece centers for a color."""
         yard = self.yard_region(color)
-        quarter = yard.width // 4
+        left = yard.x + yard.width // 4
+        right = yard.x + yard.width - yard.width // 4
+        upper = yard.y + int(yard.height * 0.38)
+        lower = yard.y + int(yard.height * 0.76)
         return (
-            (yard.x + quarter, yard.y + quarter),
-            (yard.x + yard.width - quarter, yard.y + quarter),
-            (yard.x + quarter, yard.y + yard.height - quarter),
-            (yard.x + yard.width - quarter, yard.y + yard.height - quarter),
+            (left, upper),
+            (right, upper),
+            (left, lower),
+            (right, lower),
         )
 
     def finish_region(self, color: PlayerColor) -> ScreenRect:

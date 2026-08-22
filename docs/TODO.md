@@ -73,7 +73,7 @@ Default owner: Developer / Codex-assisted.
 | Implement screen flow | Complete | High | Developer / Codex-assisted | Facade contracts | Start, name entry, game, pause, and final results screens are routable. |
 | Implement board geometry mapper | Complete | High | Developer / Codex-assisted | Board topology | Logical positions map to stable screen coordinates. |
 | Render static board | Complete | High | Developer / Codex-assisted | Geometry mapper | Board, Yards, Home Paths, safe squares, and Finish regions render clearly. |
-| Render pieces | Planned | High | Developer / Codex-assisted | Static board rendering | Pieces render clearly on Yards, outer path, Home Paths, and Finish regions. |
+| Render pieces | Complete | High | Developer / Codex-assisted | Static board rendering | Pieces render clearly on Yards, outer path, Home Paths, and Finish regions. |
 | Render stacks and hover inspection | Planned | High | Developer / Codex-assisted | Rendering | Stack summaries and hover panel display occupancy/protection/safe-square details. |
 | Implement input handling | Planned | High | Developer / Codex-assisted | Screen flow | Dice clicks, legal piece selection, hover, and `ESC` pause map to facade commands. |
 
@@ -85,7 +85,7 @@ Default owner: Developer / Codex-assisted.
 | Add destination preview | Planned | Medium | Developer / Codex-assisted | Legal-move highlights | Hovering legal pieces previews destination without changing state. |
 | Add movement animation | Planned | High | Developer / Codex-assisted | Rendering | Pieces animate square-by-square using resolved domain events. |
 | Add capture animation | Planned | Medium | Developer / Codex-assisted | Movement animation | Captures show short feedback and return captured piece visually to Yard. |
-| Add timer presentation | Planned | High | Developer / Codex-assisted | Timer state | Numeric and progress indicators appear near active player. |
+| Add timer presentation | Complete | High | Developer / Codex-assisted | Timer state | Numeric and progress indicators appear near active player. |
 | Add no-legal-move notification | Planned | High | Developer / Codex-assisted | Timer presentation | 5-second message appears and then advances turn. |
 | Add audio service | Planned | Low | Developer / Codex-assisted | Core UX complete | Optional sound effects respect configured volumes. |
 | Add final results polish | Planned | Medium | Developer / Codex-assisted | Ranking/rendering | Final rankings and Play Again/Main Menu/Quit paths are polished. |
