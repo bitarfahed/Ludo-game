@@ -358,6 +358,89 @@ Lessons learned:
 - Keeping Finished as a distinct value object makes it hard to accidentally treat it as a sixth
   Home-Path square.
 
+## Prompt 4
+
+Prompt ID: Prompt 4
+
+Title: Movement & Legal Moves
+
+Goal: Implement basic domain movement and legal-move calculation for the route
+`Yard -> Outer Path -> Home Path -> Finished`, independent from Pygame, turns, occupancy, capture,
+and blocks.
+
+Context: Prompt 2 added core player/piece models and Prompt 3 added logical board topology. This
+milestone builds on those pieces to answer whether a piece can use a dice value and what logical
+state/progress it would reach.
+
+Full prompt or faithful prompt record: Prompt 4 was provided directly in chat. Its authoritative
+requirements included:
+
+- read only relevant movement/rules and architecture documentation;
+- accept dice values `1..6`;
+- allow Yard exit only on exactly `6`;
+- place Yard exits on the owner's start square;
+- advance outer-path pieces by player-relative progress;
+- transition correctly from Outer Path into the 5-position private Home Path;
+- require exact rolls to reach Finished;
+- reject overshoots beyond Finished;
+- prevent Finished pieces from moving;
+- provide legal-move checks for one piece and for a player's pieces;
+- avoid duplication between validation and execution;
+- avoid capture, blocks, dice random generation, turns, timers, ranking, SDK, Pygame, animation, and
+  rendering.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/movement.py`
+- `tests/unit/domain/test_movement.py`
+
+Constraints:
+
+- Do not implement capture.
+- Do not inspect occupancy, safe-square collision behavior, same-player blocks, or mixed-player
+  blocks.
+- Do not implement bonus rolls, Triple Six, dice generation, turns, timers, ranking, random color
+  assignment, SDK/GameFacade, Pygame, animations, or rendering.
+- Keep screen/global coordinates separate from player-relative journey progress.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+
+Result summary:
+
+- Added `MovementRules` with `propose_move`, `can_move`, `resolve_move`, and `legal_pieces`.
+- Added `ProposedMove`, `MoveDestination`, and `MoveDestinationKind`.
+- Added `DiceValueError` for invalid dice inputs.
+- Added 23 movement tests, bringing the test suite to 76 tests.
+- Basic move proposals now return a new moved `Piece` rather than mutating existing piece state.
+
+Issues discovered:
+
+- Prompt 2's `path_progress` model was sufficient and did not need a structural change. The
+  implementation documents and uses it state-specifically: outer pieces use `0..51`, Home-Path
+  pieces use `0..4`, and Yard/Finished pieces use `None`.
+- A piece at outer progress `51` with dice `6` reaches Finished exactly; it is not an overshoot.
+  Overshoot tests therefore focus on Home-Path positions where dice values exceed the remaining
+  distance.
+
+Follow-up/refinement:
+
+- Future capture/block logic should consume `ProposedMove` destinations instead of duplicating route
+  calculations.
+- Future facade/UI code can use `legal_pieces` to highlight selectable pieces.
+
+Lessons learned:
+
+- Calculating a proposed move first keeps legality checks and resolution tied to one authoritative
+  route calculation.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

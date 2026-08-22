@@ -44,8 +44,8 @@ Default owner: Developer / Codex-assisted.
 
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
-| Implement legal-move calculation | Planned | High | Developer / Codex-assisted | Board topology | Legal pieces are calculated for Yard, outer, Home Path, exact finish, and overshoot cases. |
-| Implement move resolution | Planned | High | Developer / Codex-assisted | Legal moves | Moving a selected legal piece updates state and emits useful events. |
+| Implement legal-move calculation | Complete | High | Developer / Codex-assisted | Board topology | Legal pieces are calculated for Yard, outer, Home Path, exact finish, and overshoot cases. |
+| Implement move resolution | Complete | High | Developer / Codex-assisted | Legal moves | Moving a selected legal piece updates state and emits useful events. |
 | Implement capture rules | Planned | High | Developer / Codex-assisted | Move resolution | Vulnerable single opponent capture and safe-square non-capture are tested. |
 | Implement block/protection rules | Planned | High | Developer / Codex-assisted | Capture rules | Same-player blocks, joining protected occupancy, mixed blocks, and loss of protection are tested. |
 | Implement bonus roll rules | Planned | High | Developer / Codex-assisted | Move resolution | 6, capture, finish, non-stacking reasons, chained bonuses, and unusable roll behavior are tested. |
