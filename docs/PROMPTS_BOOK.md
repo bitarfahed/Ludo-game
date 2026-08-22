@@ -521,6 +521,82 @@ Lessons learned:
 - Keeping collision resolution separate from movement preserved the Prompt 4 route logic and left
   occupancy effects inspectable for later systems.
 
+## Prompt 6
+
+Prompt ID: Prompt 6
+
+Title: Turn Engine, Dice, Bonus Rolls & Timers
+
+Goal: Implement deterministic domain turn sequencing, dice flow, bonus rolls, Triple Six handling,
+roll and move decision timers, and no-legal-move flow without Pygame or ranking.
+
+Context: Prompts 2 through 5 introduced players, pieces, board topology, movement proposals, and
+outer-path collision outcomes. This milestone coordinates those existing domain services into
+turn-level state transitions.
+
+Full prompt or faithful prompt record: Prompt 6 was provided as an attached pasted text file. Its
+authoritative requirements included:
+
+- represent at least `WAITING_FOR_ROLL` and `WAITING_FOR_MOVE`;
+- use injectable dice/randomness;
+- use injectable time/clock for deterministic timeout tests;
+- enforce 10-second roll and move decision windows;
+- handle no-legal-move rolls without granting a bonus;
+- grant one bonus roll for a resolved move with roll `6`, capture, or finish;
+- avoid stacking multiple bonus rolls from one move;
+- implement Triple Six cancellation of only the third consecutive six;
+- rotate across active players only;
+- integrate existing legal-move, movement, and capture/block resolution;
+- avoid ranking, final-place assignment, random match setup, SDK/GameFacade, Pygame, visual
+  countdowns, popup rendering, animation, audio, and pause-menu UI.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/turns.py`
+- `tests/unit/domain/test_turns.py`
+
+Constraints:
+
+- Do not implement full ranking logic or automatic final-place assignment.
+- Do not implement random player/color assignment or start-screen setup.
+- Do not move timer logic into Pygame.
+- Do not implement visual countdowns, no-legal popup rendering, animations, audio, or pause menu.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+
+Result summary:
+
+- Added `TurnEngine` with roll, move-selection, no-legal-notice completion, and timeout handling.
+- Added `TurnPhase`, `TurnEventKind`, and `TurnEvent`.
+- Added injectable `Dice` and `Clock` protocols.
+- Added `FixedDice`, `RandomDice`, and `FixedClock`.
+- Added 15 turn-engine tests, bringing the test suite to 108 tests.
+
+Issues discovered:
+
+- Ranked-player skipping needs ranking state that does not exist yet. The current engine rotates
+  only through the supplied active players, so inactive colors are skipped by construction; ranked
+  player removal remains for the ranking milestone.
+- No conflicts with approved gameplay documentation were found.
+
+Follow-up/refinement:
+
+- Future ranking logic should provide the eligibility hook for skipping ranked players.
+- Future application/facade code should consume `TurnEvent` values for UI state and messages.
+
+Lessons learned:
+
+- Keeping dice and clock injected made timeout and Triple Six tests straightforward without tying
+  turn logic to global randomness or real time.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

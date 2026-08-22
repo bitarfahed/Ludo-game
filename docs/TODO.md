@@ -37,7 +37,7 @@ Default owner: Developer / Codex-assisted.
 | Define colors and piece states | Complete | High | Developer / Codex-assisted | Source/test skeleton | Enums or equivalent types represent colors and piece states. |
 | Define player and piece models | Complete | High | Developer / Codex-assisted | Colors and states | Active players own 4 pieces; inactive colors have none. |
 | Define board topology | Complete | High | Developer / Codex-assisted | Colors | 52 outer positions, 5 Home-Path squares, starts, and 8 safe squares are represented and tested. |
-| Add deterministic randomness abstraction | Planned | High | Developer / Codex-assisted | Source skeleton | Dice and color assignment can be controlled in tests. |
+| Add deterministic randomness abstraction | Complete | High | Developer / Codex-assisted | Source skeleton | Dice behavior can be controlled in tests; color assignment remains a later setup task. |
 | Implement color assignment | Planned | High | Developer / Codex-assisted | Randomness abstraction | 2-player opposite pairs, 3-player random inactive color, and 4-player assignment are tested. |
 
 ## Phase 3: Rules and State Machine
@@ -48,11 +48,11 @@ Default owner: Developer / Codex-assisted.
 | Implement move resolution | Complete | High | Developer / Codex-assisted | Legal moves | Moving a selected legal piece updates state and emits useful events. |
 | Implement capture rules | Complete | High | Developer / Codex-assisted | Move resolution | Vulnerable single opponent capture and safe-square non-capture are tested. |
 | Implement block/protection rules | Complete | High | Developer / Codex-assisted | Capture rules | Same-player blocks, joining protected occupancy, mixed blocks, and loss of protection are tested. |
-| Implement bonus roll rules | Planned | High | Developer / Codex-assisted | Move resolution | 6, capture, finish, non-stacking reasons, chained bonuses, and unusable roll behavior are tested. |
-| Implement triple-six rule | Planned | High | Developer / Codex-assisted | Bonus rules | Third consecutive six is cancelled without undoing first two moves. |
-| Implement turn manager | Planned | High | Developer / Codex-assisted | Player models | Clockwise active-player rotation skips inactive and ranked players. |
+| Implement bonus roll rules | Complete | High | Developer / Codex-assisted | Move resolution | 6, capture, finish, non-stacking reasons, chained bonuses, and unusable roll behavior are tested. |
+| Implement triple-six rule | Complete | High | Developer / Codex-assisted | Bonus rules | Third consecutive six is cancelled without undoing first two moves. |
+| Implement turn manager | Complete | High | Developer / Codex-assisted | Player models | Clockwise active-player rotation skips inactive colors; ranked-player skipping remains for the ranking milestone. |
 | Implement ranking | Planned | High | Developer / Codex-assisted | Turn manager | Rankings for 2, 3, and 4 players and automatic final rank are tested. |
-| Implement timer state model | Planned | High | Developer / Codex-assisted | Turn state machine | Roll/move 10-second windows and 5-second no-legal notification are deterministic in tests. |
+| Implement timer state model | Complete | High | Developer / Codex-assisted | Turn state machine | Roll/move 10-second windows and no-legal notice completion are deterministic in tests. |
 
 ## Phase 4: Application Facade
 
