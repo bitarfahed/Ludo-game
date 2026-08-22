@@ -113,6 +113,29 @@ def test_valid_roll_flow_exposes_dice_and_legal_moves() -> None:
     assert facade.current_phase() is TurnPhase.WAITING_FOR_MOVE
     assert len(result.legal_moves) == 4
     assert {move.owner_color for move in result.legal_moves} == {PlayerColor.RED}
+    assert [step.global_outer_index for step in result.legal_moves[0].route] == [0]
+
+
+def test_legal_move_route_crosses_outer_to_home_boundary() -> None:
+    red_piece = outer_piece("red-1", PlayerColor.RED, 50)
+    match = create_match(
+        [4],
+        (
+            player_with_first_piece("red", PlayerColor.RED, red_piece),
+            Player(id="yellow", name="Yellow", color=PlayerColor.YELLOW),
+        ),
+    )
+    facade = GameFacade.from_match(match)
+
+    result = facade.roll()
+
+    route = result.legal_moves[0].route
+    assert route[0].global_outer_index == 51
+    assert [(step.home_color, step.home_index) for step in route[1:]] == [
+        (PlayerColor.RED, 0),
+        (PlayerColor.RED, 1),
+        (PlayerColor.RED, 2),
+    ]
 
 
 def test_valid_piece_selection_moves_piece_and_exposes_bonus_roll_state() -> None:

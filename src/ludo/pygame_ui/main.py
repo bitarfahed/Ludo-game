@@ -47,9 +47,10 @@ class LudoApplication:
     def _render_frame(self) -> None:
         if self.screen is None or self.clock is None or self.renderer is None:
             return
+        delta_ms = self.clock.tick(theme.FPS)
+        self.renderer.update(delta_ms, self.controller)
         self.renderer.draw(self.screen, self.controller)
         pygame.display.flip()
-        self.clock.tick(theme.FPS)
 
 
 def main(argv: list[str] | None = None) -> None:

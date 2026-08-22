@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from ludo.domain.board import BoardTopology
 from ludo.domain.colors import PlayerColor
 from ludo.domain.match import ColorRandomizer, Match
 from ludo.domain.movement import MoveDestination, MoveDestinationKind
@@ -81,6 +82,16 @@ class MoveDestinationSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class MoveRouteStepSnapshot:
+    """Read-only visual route step for an already legal move."""
+
+    kind: MoveDestinationKind
+    global_outer_index: int | None = None
+    home_color: PlayerColor | None = None
+    home_index: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class LegalMoveSnapshot:
     """Read-only public view of a currently selectable piece."""
 
@@ -90,6 +101,7 @@ class LegalMoveSnapshot:
     path_progress: int | None
     dice_value: int
     destination: MoveDestinationSnapshot
+    route: tuple[MoveRouteStepSnapshot, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,7 +410,61 @@ def _legal_move_snapshot(
         path_progress=piece.path_progress,
         dice_value=dice_value,
         destination=_destination_snapshot(destination),
+        route=_route_snapshot(piece, dice_value),
     )
+
+
+def _route_snapshot(piece: Piece, dice_value: int) -> tuple[MoveRouteStepSnapshot, ...]:
+    if piece.state is PieceState.IN_YARD:
+        return (
+            MoveRouteStepSnapshot(
+                kind=MoveDestinationKind.OUTER_PATH,
+                global_outer_index=BoardTopology().start_position(piece.owner_color),
+            ),
+        )
+    if piece.state is PieceState.ON_OUTER_PATH:
+        if piece.path_progress is None:
+            msg = "Outer-path route requires path progress."
+            raise ValueError(msg)
+        return tuple(
+            _outer_route_step(piece.owner_color, piece.path_progress + step)
+            for step in range(1, dice_value + 1)
+        )
+    if piece.state is PieceState.ON_HOME_PATH:
+        if piece.path_progress is None:
+            msg = "Home-Path route requires path progress."
+            raise ValueError(msg)
+        return tuple(
+            _home_route_step(piece.owner_color, piece.path_progress + step)
+            for step in range(1, dice_value + 1)
+        )
+    return ()
+
+
+def _outer_route_step(color: PlayerColor, journey_progress: int) -> MoveRouteStepSnapshot:
+    topology = BoardTopology()
+    if journey_progress < 52:
+        return MoveRouteStepSnapshot(
+            kind=MoveDestinationKind.OUTER_PATH,
+            global_outer_index=topology.global_outer_index(color, journey_progress),
+        )
+    if journey_progress < 57:
+        return MoveRouteStepSnapshot(
+            kind=MoveDestinationKind.HOME_PATH,
+            home_color=color,
+            home_index=journey_progress - 52,
+        )
+    return MoveRouteStepSnapshot(kind=MoveDestinationKind.FINISHED, home_color=color)
+
+
+def _home_route_step(color: PlayerColor, home_progress: int) -> MoveRouteStepSnapshot:
+    if home_progress < 5:
+        return MoveRouteStepSnapshot(
+            kind=MoveDestinationKind.HOME_PATH,
+            home_color=color,
+            home_index=home_progress,
+        )
+    return MoveRouteStepSnapshot(kind=MoveDestinationKind.FINISHED, home_color=color)
 
 
 def _destination_snapshot(destination: MoveDestination) -> MoveDestinationSnapshot:

@@ -5,8 +5,10 @@ from __future__ import annotations
 import pygame
 
 from ludo.app import GameSnapshot
+from ludo.domain.movement import MoveDestinationKind
 from ludo.geometry import BoardGeometry, ScreenRect
 from ludo.pygame_ui import theme
+from ludo.pygame_ui.animation import AnimationManager, CaptureAnimation
 from ludo.pygame_ui.interaction import DestinationPreview
 from ludo.pygame_ui.render_models import (
     DiceHudState,
@@ -34,16 +36,19 @@ class GameplayRenderer:
         small_font: pygame.font.Font,
         preview: DestinationPreview | None = None,
         inspection: OccupancyInspection | None = None,
+        animation: AnimationManager | None = None,
     ) -> None:
         """Draw pieces, dice, player status, and timer HUD."""
         state = build_gameplay_render_state(snapshot, self.geometry)
         for player in state.players:
             self._draw_player_hud(surface, player, font, small_font)
-        self._draw_dice(surface, state.dice, font, small_font)
+        self._draw_dice(surface, state.dice, font, small_font, animation)
         if preview is not None:
             self._draw_destination_preview(surface, preview, small_font)
-        self._draw_pieces(surface, state, font, small_font)
+        self._draw_pieces(surface, state, font, small_font, animation)
         self._draw_legal_piece_rings(surface, state, snapshot)
+        if animation is not None:
+            self._draw_animation_overlay(surface, animation, font)
         if inspection is not None:
             self._draw_occupancy_inspection(surface, inspection, small_font)
 
@@ -53,8 +58,12 @@ class GameplayRenderer:
         state: GameplayRenderState,
         font: pygame.font.Font,
         small_font: pygame.font.Font,
+        animation: AnimationManager | None,
     ) -> None:
+        hidden_ids = animation.hidden_piece_ids if animation is not None else frozenset()
         for group in state.pieces:
+            if any(piece.piece_id in hidden_ids for piece in group.pieces):
+                continue
             if group.is_stack_placeholder:
                 self._draw_stack_summary(surface, group, small_font)
             else:
@@ -108,16 +117,24 @@ class GameplayRenderer:
         dice: DiceHudState,
         font: pygame.font.Font,
         small_font: pygame.font.Font,
+        animation: AnimationManager | None,
     ) -> None:
         rect = _to_pygame_rect(dice.bounds)
         border = dice.accent_color if dice.roll_available else theme.BORDER
         pygame.draw.rect(surface, theme.SURFACE, rect, border_radius=7)
         pygame.draw.rect(surface, border, rect, width=3, border_radius=7)
-        label_text = str(dice.current_value) if dice.current_value is not None else "Roll"
-        label_font = font if dice.current_value is not None else small_font
+        rolling = animation is not None and animation.dice is not None
+        if rolling:
+            label_text = str(animation.dice.display_value())
+        else:
+            label_text = str(dice.current_value) if dice.current_value is not None else "Roll"
+        label_font = font if dice.current_value is not None or rolling else small_font
         label = label_font.render(label_text, True, theme.TEXT)
         surface.blit(label, label.get_rect(center=(rect.centerx, rect.centery - 3)))
-        if dice.roll_available:
+        if rolling:
+            hint = small_font.render("...", True, dice.accent_color)
+            surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
+        elif dice.roll_available:
             hint = small_font.render("ready", True, dice.accent_color)
             surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
 
@@ -206,6 +223,87 @@ class GameplayRenderer:
             surface.blit(label, (rect.x + 24, y - 1))
             y += 22
 
+    def _draw_animation_overlay(
+        self, surface: pygame.Surface, animation: AnimationManager, font: pygame.font.Font
+    ) -> None:
+        if animation.move is not None and animation.move.route:
+            center = self._animated_route_center(
+                animation.move.route,
+                animation.move.elapsed_ms,
+                animation.settings.movement_step_ms,
+            )
+            self._draw_animated_piece(
+                surface, center, animation.move.color_value, animation.move.symbol, font
+            )
+        if animation.capture is not None:
+            center = self._capture_center(animation.capture, animation)
+            self._draw_animated_piece(
+                surface, center, animation.capture.color_value, animation.capture.symbol, font
+            )
+        if animation.finish_color is not None:
+            self._draw_finish_pulse(surface, animation)
+
+    def _capture_center(
+        self, capture: CaptureAnimation, animation: AnimationManager
+    ) -> tuple[int, int]:
+        start = self._route_step_center(capture.start)
+        if capture.elapsed_ms <= animation.settings.capture_feedback_ms:
+            return start
+        yard = self.geometry.yard_piece_positions(capture.owner_color)[0]
+        elapsed = capture.elapsed_ms - animation.settings.capture_feedback_ms
+        fraction = min(1.0, elapsed / max(1, animation.settings.capture_return_ms))
+        return _lerp_point(start, yard, fraction)
+
+    def _animated_route_center(
+        self,
+        route: tuple,
+        elapsed_ms: int,
+        step_duration_ms: int,
+    ) -> tuple[int, int]:
+        index = min(len(route) - 1, elapsed_ms // max(1, step_duration_ms))
+        return self._route_step_center(route[index])
+
+    def _route_step_center(self, step) -> tuple[int, int]:
+        if step.kind is MoveDestinationKind.OUTER_PATH and step.global_outer_index is not None:
+            return self.geometry.outer_square(step.global_outer_index).center
+        if (
+            step.kind is MoveDestinationKind.HOME_PATH
+            and step.home_color is not None
+            and step.home_index is not None
+        ):
+            return self.geometry.home_path_square(step.home_color, step.home_index).center
+        if step.kind is MoveDestinationKind.FINISHED and step.home_color is not None:
+            return self.geometry.finish_region(step.home_color).center
+        return self.geometry.center_dice_area.center
+
+    def _draw_animated_piece(
+        self,
+        surface: pygame.Surface,
+        center: tuple[int, int],
+        color_value: str,
+        symbol: str,
+        font: pygame.font.Font,
+    ) -> None:
+        radius = max(12, self.geometry.cell_size // 2 - 1)
+        pygame.draw.circle(surface, theme.color_for_name(color_value), center, radius)
+        pygame.draw.circle(surface, theme.SURFACE, center, radius, width=3)
+        label = font.render(symbol, True, theme.SURFACE)
+        surface.blit(label, label.get_rect(center=center))
+
+    def _draw_finish_pulse(self, surface: pygame.Surface, animation: AnimationManager) -> None:
+        if animation.finish_color is None:
+            return
+        rect = _to_pygame_rect(self.geometry.finish_region(animation.finish_color))
+        fraction = animation.finish_elapsed_ms / max(1, animation.settings.finish_pulse_ms)
+        radius = int(max(rect.width, rect.height) * (0.45 + 0.2 * min(1.0, fraction)))
+        pygame.draw.circle(
+            surface,
+            theme.color_for_name(animation.finish_color.value),
+            rect.center,
+            radius,
+            width=3,
+        )
+
 
 def _draw_inspection_status(
     surface: pygame.Surface, font: pygame.font.Font, text: str, y: int, rect: pygame.Rect
@@ -215,6 +313,15 @@ def _draw_inspection_status(
     pygame.draw.rect(surface, theme.BACKGROUND, background, border_radius=4)
     surface.blit(label, label.get_rect(center=background.center))
     return y + 22
+
+
+def _lerp_point(
+    start: tuple[int, int], end: tuple[int, int], fraction: float
+) -> tuple[int, int]:
+    return (
+        int(start[0] + (end[0] - start[0]) * fraction),
+        int(start[1] + (end[1] - start[1]) * fraction),
+    )
 
 
 def _to_pygame_rect(rect: ScreenRect) -> pygame.Rect:

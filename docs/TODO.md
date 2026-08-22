@@ -83,11 +83,11 @@ Default owner: Developer / Codex-assisted.
 | --- | --- | --- | --- | --- | --- |
 | Add legal-move highlights | Complete | High | Developer / Codex-assisted | Input/rendering | Only legal pieces are selectable and visibly highlighted. |
 | Add destination preview | Complete | Medium | Developer / Codex-assisted | Legal-move highlights | Hovering legal pieces previews destination without changing state. |
-| Add movement animation | Planned | High | Developer / Codex-assisted | Rendering | Pieces animate square-by-square using resolved domain events. |
-| Add capture animation | Planned | Medium | Developer / Codex-assisted | Movement animation | Captures show short feedback and return captured piece visually to Yard. |
+| Add movement animation | Complete | High | Developer / Codex-assisted | Rendering | Pieces animate square-by-square using resolved domain events. |
+| Add capture animation | Complete | Medium | Developer / Codex-assisted | Movement animation | Captures show short feedback and return captured piece visually to Yard. |
 | Add timer presentation | Complete | High | Developer / Codex-assisted | Timer state | Numeric and progress indicators appear near active player. |
 | Add no-legal-move notification | Planned | High | Developer / Codex-assisted | Timer presentation | 5-second message appears and then advances turn. |
-| Add audio service | Planned | Low | Developer / Codex-assisted | Core UX complete | Optional sound effects respect configured volumes. |
+| Add audio service | Complete | Low | Developer / Codex-assisted | Core UX complete | Optional sound effects respect configured volumes. |
 | Add final results polish | Planned | Medium | Developer / Codex-assisted | Ranking/rendering | Final rankings and Play Again/Main Menu/Quit paths are polished. |
 
 ## Phase 7: Quality, Documentation, and Release

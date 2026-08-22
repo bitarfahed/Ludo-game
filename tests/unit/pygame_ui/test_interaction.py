@@ -6,6 +6,7 @@ from ludo.app import GameFacade
 from ludo.domain import FixedClock, FixedDice, Match, Piece, PieceState, PlayerColor, TurnPhase
 from ludo.domain.match import FixedColorRandomizer
 from ludo.geometry import BoardGeometry
+from ludo.pygame_ui.animation import AnimationManager
 from ludo.pygame_ui.interaction import GameplayInteractionController
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
@@ -86,6 +87,7 @@ def test_legal_piece_click_submits_move_and_updates_ui_state() -> None:
     controller = started_controller([6])
 
     interaction.handle_click(geometry.center_dice_area.center, controller)
+    interaction.animation.update(500)
     assert interaction.handle_click(geometry.yard_piece_positions(PlayerColor.RED)[0], controller)
 
     moved = controller.facade.piece_state("player-1-piece-1")
@@ -125,10 +127,23 @@ def test_repeated_piece_click_does_not_duplicate_action() -> None:
     piece_point = geometry.yard_piece_positions(PlayerColor.RED)[0]
 
     interaction.handle_click(geometry.center_dice_area.center, controller)
+    interaction.animation.update(500)
     assert interaction.handle_click(piece_point, controller)
     assert not interaction.handle_click(piece_point, controller)
 
     assert controller.facade.piece_state("player-1-piece-1").path_progress == 0
+
+
+def test_gameplay_action_cannot_execute_during_locked_animation() -> None:
+    geometry = BoardGeometry()
+    animation = AnimationManager()
+    interaction = GameplayInteractionController(geometry, animation=animation)
+    controller = started_controller([6])
+
+    animation.start_dice(6)
+
+    assert not interaction.handle_click(geometry.center_dice_area.center, controller)
+    assert controller.facade.snapshot().phase is TurnPhase.WAITING_FOR_ROLL
 
 
 def test_no_legal_roll_disables_piece_interaction() -> None:

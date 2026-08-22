@@ -1199,6 +1199,105 @@ Lessons learned:
 - Exposing occupancy metadata at the facade boundary keeps the Pygame layer visual-only while still
   letting it present rules-derived safe/protected context accurately.
 
+## Prompt 14
+
+Prompt ID: Prompt 14
+
+Title: Animations & Audio
+
+Goal: Add non-blocking gameplay animations and audio feedback while keeping all authoritative game
+rules inside the existing domain/facade layers.
+
+Context: Prompt 13 completed stack summaries and hover inspection. Prompt 14 adds presentation
+feedback above the existing GameFacade, board geometry, rendering, and interaction flow.
+
+Full prompt or faithful prompt record: Prompt 14 was provided as an attached pasted text file. Its
+authoritative requirements included:
+
+- read only relevant UX, architecture, and TODO documentation;
+- animate piece movement square-by-square along the already resolved logical route;
+- make Outer Path to Home Path transitions visually clear;
+- keep animation duration configurable;
+- animate capture as move arrival, brief captured-piece feedback, and visual return to Yard;
+- animate final transition into the player's Finish region;
+- add a short dice-roll animation before showing the authoritative facade dice value;
+- keep animations non-blocking and pause/resume aware;
+- prevent duplicate interaction during critical animation state;
+- add audio feedback for dice roll, move, capture, finish, ranking, and UI button clicks;
+- use lightweight legal placeholder/generated audio if suitable;
+- move tunable animation/audio values into configuration;
+- add state/control tests rather than screenshot or waveform tests;
+- update `docs/TODO.md` and `docs/PROMPTS_BOOK.md`;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- launch and manually verify gameplay animations, pause/resume, audio, and unchanged rules.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/__init__.py`
+- `src/ludo/app/facade.py`
+- `src/ludo/audio/__init__.py`
+- `src/ludo/audio/service.py`
+- `src/ludo/config/__init__.py`
+- `src/ludo/config/defaults.py`
+- `src/ludo/pygame_ui/animation.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/interaction.py`
+- `src/ludo/pygame_ui/main.py`
+- `src/ludo/pygame_ui/screens.py`
+- `tests/integration/test_game_facade.py`
+- `tests/unit/pygame_ui/test_animation.py`
+- `tests/unit/pygame_ui/test_interaction.py`
+- `tests/unit/test_audio.py`
+
+Constraints:
+
+- Do not implement Bot logic, network play, new gameplay rules, rule variants, major UI redesign,
+  or portfolio/README polish.
+- Do not modify domain outcomes merely to make animations easier.
+- Avoid blocking sleeps or frozen Pygame event loops.
+- Do not use copyrighted commercial audio assets.
+
+Verification performed:
+
+- Added facade integration coverage for visual move routes, including Outer Path to Home Path
+  boundary transitions.
+- Added animation tests for route intake, step progression, once-only completion events, capture
+  sequence order, finish completion, authoritative dice result preservation, input lock behavior,
+  pause freeze, and resume continuation.
+- Added audio tests for facade-result mapping, muted playback, and configured volume routing.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and Pygame launch/visual/audio inspection.
+
+Result summary:
+
+- Added public `MoveRouteStepSnapshot` route data to legal-move snapshots.
+- Added configurable `AnimationSettings` and `AudioSettings`.
+- Added a non-blocking `AnimationManager` for dice, movement, capture, and finish feedback.
+- Wired gameplay clicks to start animations from facade results and lock duplicate input while
+  critical animations run.
+- Added renderer support for dice rolling values, animated piece overlays, captured-piece return,
+  and finish pulse feedback.
+- Added `AudioService` with generated placeholder tones and a no-op fallback path.
+
+Issues discovered:
+
+- The facade previously exposed legal destinations but not visual routes. Prompt 14 added route
+  snapshots at the facade boundary so Pygame can animate resolved moves without recalculating
+  movement legality.
+- Audio uses generated tones instead of external assets, so no third-party asset license is needed.
+
+Follow-up/refinement:
+
+- Future UX work can replace generated tones with curated licensed assets if desired.
+- The no-legal-move timed notification remains planned for a later milestone.
+
+Lessons learned:
+
+- Animation state can be kept presentation-only if the facade exposes enough resolved event data:
+  route, final dice value, capture result, finish result, and ranking result.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

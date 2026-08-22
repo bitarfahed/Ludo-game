@@ -6,7 +6,9 @@ from contextlib import suppress
 
 import pygame
 
+from ludo.audio import AudioEvent, AudioService
 from ludo.pygame_ui import layout, theme
+from ludo.pygame_ui.animation import AnimationManager
 from ludo.pygame_ui.board_renderer import BoardRenderer
 from ludo.pygame_ui.controls import Button, draw_text
 from ludo.pygame_ui.gameplay_renderer import GameplayRenderer
@@ -23,8 +25,18 @@ class ScreenRenderer:
         self.small_font = pygame.font.Font(None, 24)
         self.board_renderer = BoardRenderer()
         self.gameplay_renderer = GameplayRenderer(self.board_renderer.geometry)
-        self.interaction = GameplayInteractionController(self.board_renderer.geometry)
+        self.animation = AnimationManager()
+        self.audio = AudioService()
+        self.interaction = GameplayInteractionController(
+            self.board_renderer.geometry,
+            animation=self.animation,
+            audio=self.audio,
+        )
         self.active_name_index: int | None = None
+
+    def update(self, delta_ms: int, controller: ScreenController) -> None:
+        """Advance presentation systems."""
+        self.animation.update(delta_ms, paused=controller.paused)
 
     def draw(self, surface: pygame.Surface, controller: ScreenController) -> None:
         """Draw the active screen."""
@@ -68,6 +80,7 @@ class ScreenRenderer:
         buttons = layout.buttons_for(controller)
         command = _command_at(position, buttons)
         if command is not None:
+            self.audio.play(AudioEvent.UI_CLICK)
             self._apply_command(command, controller)
             return
         self.active_name_index = layout.name_field_at(position, controller)
@@ -138,6 +151,7 @@ class ScreenRenderer:
             self.small_font,
             self.interaction.preview,
             self.interaction.inspection,
+            self.animation,
         )
 
     def _draw_results(self, surface: pygame.Surface, controller: ScreenController) -> None:

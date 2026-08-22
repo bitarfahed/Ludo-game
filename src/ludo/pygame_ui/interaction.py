@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ludo.app import GameFacadeError, LegalMoveSnapshot, MoveDestinationSnapshot
+from ludo.audio import AudioService
 from ludo.domain.turns import TurnPhase
 from ludo.geometry import BoardGeometry, ScreenRect
+from ludo.pygame_ui.animation import AnimationManager
 from ludo.pygame_ui.render_models import OccupancyInspection
 from ludo.pygame_ui.render_state import (
     build_gameplay_render_state,
@@ -29,11 +31,15 @@ class GameplayInteractionController:
     """Translate mouse positions into facade gameplay commands."""
 
     geometry: BoardGeometry
+    animation: AnimationManager = field(default_factory=AnimationManager)
+    audio: AudioService = field(default_factory=AudioService)
     preview: DestinationPreview | None = None
     inspection: OccupancyInspection | None = None
 
     def handle_click(self, position: tuple[int, int], controller: ScreenController) -> bool:
         """Handle one gameplay click and return whether it was consumed."""
+        if self.animation.input_locked:
+            return False
         if not _can_interact(controller):
             return False
         snapshot = controller.snapshot()
@@ -75,9 +81,12 @@ class GameplayInteractionController:
         if snapshot.phase is not TurnPhase.WAITING_FOR_ROLL or not snapshot.current_player:
             return False
         try:
-            controller.facade.roll()
+            result = controller.facade.roll()
         except GameFacadeError:
             return False
+        if result.dice_value is not None:
+            self.animation.start_dice(result.dice_value)
+        self.audio.play_result(result)
         self.preview = None
         self.inspection = None
         return True
@@ -85,10 +94,22 @@ class GameplayInteractionController:
     def _try_choose_piece(self, controller: ScreenController, piece_id: str) -> bool:
         if controller.facade is None:
             return False
+        snapshot = controller.facade.snapshot()
+        legal_move = _legal_move_by_id(snapshot.legal_moves, piece_id)
+        if legal_move is None:
+            return False
         try:
-            controller.facade.choose_piece(piece_id)
+            result = controller.facade.choose_piece(piece_id)
         except GameFacadeError:
             return False
+        if result.moved_piece is not None:
+            self.animation.start_move(
+                legal_move,
+                moved_piece=result.moved_piece,
+                captured_piece=result.captured_piece,
+                piece_finished=result.piece_finished,
+            )
+        self.audio.play_result(result)
         self.preview = None
         self.inspection = None
         return True
