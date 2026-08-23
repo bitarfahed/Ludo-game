@@ -1949,6 +1949,74 @@ Lessons learned:
 - Forced board effects stay easier to reason about when the landing square is resolved first, then
   a single authoritative forced displacement is applied without re-entering special-square logic.
 
+## Bugfix — Prevent Hazard Shortcut Into Home Path
+
+Prompt ID: Bugfix Hazard Home Shortcut
+
+Title: Prevent Hazard Shortcut Into Home Path
+
+Goal: Fix a manual-play edge case where a Hazard penalty near a player's Start square could wrap a
+recently released piece to high relative outer progress, allowing premature Home Path entry.
+
+Context: Hazard penalties previously used global-index wraparound to move two squares backward.
+That was valid for shared board coordinates but invalid for player-relative journey progress near
+Start.
+
+Full prompt or faithful prompt record: The bugfix prompt required:
+
+- forced backward outer movement must never reduce player-relative progress below `0`;
+- Hazard penalty should clamp with `max(0, current_progress - 2)` or equivalent;
+- clamped Start remains a Safe Square and uses existing collision/protection rules;
+- Home Path entry must depend on authoritative player-relative journey progress, not geometric
+  proximity or wrapped global indices;
+- Backward Capture and future backward effects must not create early Home eligibility;
+- Boost behavior, Hazard counts, Shield behavior, Bonus Die, Triple Six, Yard release, ranking, and
+  UI design must not change;
+- update only `docs/PROMPTS_BOOK.md` and `docs/TODO.md` where appropriate;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- do not claim manual reproduction unless actually performed.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/facade.py`
+- `src/ludo/domain/hazards.py`
+- `src/ludo/domain/movement.py`
+- `src/ludo/domain/turns.py`
+- affected tests under `tests/`
+
+Verification performed:
+
+- Added regressions for Hazard clamping from progress `1` to Start for all four colors.
+- Added checks that Hazard penalty at Start stays at Start, never creates negative progress, and
+  does not wrap to outer index `51`.
+- Added a regression that an early Hazard clamp cannot create premature Home Path entry.
+- Added all-color confirmation that genuine full-lap Home entry still works.
+- Added Start/Safe collision coverage after a clamped Hazard penalty.
+- Added no-regression coverage for normal Hazard behavior, Backward Capture, Boost forward
+  displacement, and facade route previews.
+- Ran `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`.
+
+Result summary:
+
+- Root cause was modulo conversion from global Hazard penalty index back to player-relative
+  progress, which could turn near-Start progress into near-complete-lap progress.
+- Hazard penalty now clamps by player-relative progress before mapping back to a global square.
+- Backward Capture no longer exposes capture actions that would require crossing before Start.
+- Facade route generation now displays the clamped Hazard penalty route instead of wrapped
+  penalty steps.
+
+Follow-up/refinement:
+
+- The original manual scenario should still be replayed in a live window before release notes or
+  media capture.
+
+Lessons learned:
+
+- Global board wraparound and player-relative journey progress are different invariants; backward
+  forced movement must operate on journey progress first.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

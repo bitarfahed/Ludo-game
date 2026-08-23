@@ -111,6 +111,16 @@ def backward_global_index(global_index: int, steps: int = HAZARD_PENALTY_STEPS) 
     return (global_index - steps) % OUTER_PATH_LENGTH
 
 
+def clamped_backward_relative_progress(
+    relative_progress: int, steps: int = HAZARD_PENALTY_STEPS
+) -> int:
+    """Return outer progress moved backward without crossing the player's Start square."""
+    if relative_progress < 0:
+        msg = "relative progress must be non-negative."
+        raise ValueError(msg)
+    return max(0, relative_progress - steps)
+
+
 def forward_global_index(global_index: int, steps: int = BOOST_STEPS) -> int:
     """Return a global outer index moved forward by ``steps`` with wraparound."""
     return (global_index + steps) % OUTER_PATH_LENGTH

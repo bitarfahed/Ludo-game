@@ -127,7 +127,9 @@ class MovementRules:
         if piece.path_progress is None:
             msg = "Outer-path pieces require path progress."
             raise ValueError(msg)
-        relative_progress = (piece.path_progress - movement_value) % OUTER_COMPLETION_PROGRESS
+        if movement_value > piece.path_progress:
+            return None
+        relative_progress = piece.path_progress - movement_value
         return self._outer_result(piece, movement_value, relative_progress)
 
     def _propose_yard_exit(self, piece: Piece, dice_value: int) -> ProposedMove | None:

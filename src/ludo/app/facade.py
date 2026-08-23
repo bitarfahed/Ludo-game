@@ -9,7 +9,12 @@ from enum import StrEnum
 
 from ludo.domain.board import OUTER_PATH_LENGTH, BoardTopology
 from ludo.domain.colors import PlayerColor
-from ludo.domain.hazards import HazardRandomizer, backward_global_index, forward_global_index
+from ludo.domain.hazards import (
+    HAZARD_PENALTY_STEPS,
+    HazardRandomizer,
+    clamped_backward_relative_progress,
+    forward_global_index,
+)
 from ludo.domain.match import ColorRandomizer, Match
 from ludo.domain.movement import MoveDestination, MoveDestinationKind
 from ludo.domain.pieces import Piece, PieceState
@@ -569,17 +574,17 @@ def _route_snapshot(
             and final.global_outer_index is not None
             and final.global_outer_index in hazard_positions
         ):
-            first_penalty = backward_global_index(final.global_outer_index, 1)
-            second_penalty = backward_global_index(final.global_outer_index, 2)
-            return (
-                *route,
-                MoveRouteStepSnapshot(
-                    MoveDestinationKind.OUTER_PATH, global_outer_index=first_penalty
-                ),
-                MoveRouteStepSnapshot(
-                    MoveDestinationKind.OUTER_PATH, global_outer_index=second_penalty
-                ),
+            penalty_steps = tuple(
+                _outer_route_step(
+                    piece.owner_color,
+                    clamped_backward_relative_progress(piece.path_progress + dice_value, step),
+                )
+                for step in range(
+                    1,
+                    min(HAZARD_PENALTY_STEPS, piece.path_progress + dice_value) + 1,
+                )
             )
+            return (*route, *penalty_steps)
         if (
             final is not None
             and final.global_outer_index is not None

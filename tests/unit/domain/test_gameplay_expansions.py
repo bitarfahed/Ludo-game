@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 
+import pytest
+
 from ludo.domain import (
     BoardTopology,
     FixedClock,
@@ -10,6 +12,7 @@ from ludo.domain import (
     FixedSpecialDie,
     Match,
     MoveActionKind,
+    MovementRules,
     OuterPathOccupancy,
     Piece,
     PieceState,
@@ -22,7 +25,15 @@ from ludo.domain import (
     generate_special_squares,
 )
 from ludo.domain.bonus_die import SPECIAL_BONUS_VALUE, RandomSpecialDie
+from ludo.domain.hazards import clamped_backward_relative_progress
 from ludo.domain.match import FixedColorRandomizer
+
+ALL_COLORS = (
+    PlayerColor.RED,
+    PlayerColor.GREEN,
+    PlayerColor.YELLOW,
+    PlayerColor.BLUE,
+)
 
 
 def player(player_id: str, color: PlayerColor, pieces: tuple[Piece, ...] | None = None) -> Player:
@@ -39,6 +50,20 @@ def outer_piece(piece_id: str, color: PlayerColor, progress: int) -> Piece:
 def home_piece(piece_id: str, color: PlayerColor, progress: int) -> Piece:
     """Create one Home-Path piece."""
     return Piece(piece_id, color, PieceState.ON_HOME_PATH, progress)
+
+
+def player_with_piece(player_id: str, color: PlayerColor, piece: Piece) -> Player:
+    """Create a player with one focused piece and three completed placeholders."""
+    return player(
+        player_id,
+        color,
+        (
+            piece,
+            Piece(f"{player_id}-finished-1", color, PieceState.FINISHED),
+            Piece(f"{player_id}-finished-2", color, PieceState.FINISHED),
+            Piece(f"{player_id}-finished-3", color, PieceState.FINISHED),
+        ),
+    )
 
 
 def engine(
@@ -74,6 +99,30 @@ def engine(
         players=(red, blue),
         dice=FixedDice(rolls),
         special_die=FixedSpecialDie(specials or [0] * 20),
+        clock=FixedClock(),
+        hazard_positions=hazards,
+    )
+
+
+def engine_for_color(
+    *,
+    color: PlayerColor,
+    piece: Piece,
+    rolls: list[int],
+    hazards: frozenset[int] = frozenset(),
+    opponent_piece: Piece | None = None,
+) -> TurnEngine:
+    """Build a focused engine with the requested color taking the current turn."""
+    opponent_color = next(candidate for candidate in PlayerColor if candidate is not color)
+    opponent = (
+        player_with_piece("opponent", opponent_color, opponent_piece)
+        if opponent_piece is not None
+        else player("opponent", opponent_color)
+    )
+    return TurnEngine(
+        players=(player_with_piece("moving", color, piece), opponent),
+        dice=FixedDice(rolls),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
         hazard_positions=hazards,
     )
@@ -181,10 +230,10 @@ def test_special_roll_with_no_effective_or_base_move_enters_no_legal_phase() -> 
 
 
 def test_effective_backward_capture_prevents_base_fallback() -> None:
-    red = outer_piece("red-1", PlayerColor.RED, 4)
-    blue = outer_piece("blue-1", PlayerColor.BLUE, 50 - 39)
+    red = outer_piece("red-1", PlayerColor.RED, 10)
+    blue = outer_piece("blue-1", PlayerColor.BLUE, (4 - 39) % 52)
     turn_engine = engine(rolls=[4], specials=[2], red_piece=red, blue_piece=blue)
-    turn_engine.set_occupancy(OuterPathOccupancy(50, (blue,)))
+    turn_engine.set_occupancy(OuterPathOccupancy(4, (blue,)))
 
     turn_engine.roll()
     event = turn_engine.roll_special()
@@ -257,6 +306,107 @@ def test_direct_hazard_landing_moves_piece_two_outer_steps_backward() -> None:
     assert event.moved_piece.path_progress == 1
 
 
+def test_hazard_penalty_at_start_stays_at_start() -> None:
+    assert clamped_backward_relative_progress(0) == 0
+
+
+@pytest.mark.parametrize("color", ALL_COLORS)
+def test_hazard_penalty_near_start_clamps_to_start_for_every_color(
+    color: PlayerColor,
+) -> None:
+    topology = BoardTopology()
+    hazard_index = topology.global_outer_index(color, 1)
+    piece = outer_piece(f"{color.value}-1", color, 0)
+    turn_engine = engine_for_color(
+        color=color,
+        piece=piece,
+        rolls=[1],
+        hazards=frozenset({hazard_index}),
+    )
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece(piece.id)
+
+    assert event.hazard_triggered
+    assert event.hazard_from == hazard_index
+    assert event.hazard_to == topology.start_position(color)
+    assert event.moved_piece.path_progress == 0
+
+
+def test_hazard_penalty_near_start_does_not_wrap_to_outer_index_51() -> None:
+    turn_engine = engine(rolls=[1], hazards=frozenset({1}))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.hazard_to == 0
+    assert event.hazard_to != 51
+    assert event.moved_piece.path_progress == 0
+
+
+@pytest.mark.parametrize("color", ALL_COLORS)
+def test_early_hazard_clamp_cannot_create_premature_home_entry(
+    color: PlayerColor,
+) -> None:
+    topology = BoardTopology()
+    hazard_index = topology.global_outer_index(color, 1)
+    piece = outer_piece(f"{color.value}-1", color, 0)
+    turn_engine = engine_for_color(
+        color=color,
+        piece=piece,
+        rolls=[1],
+        hazards=frozenset({hazard_index}),
+    )
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece(piece.id)
+    next_move = MovementRules().propose_move(event.moved_piece, 6)
+
+    assert next_move is not None
+    assert next_move.piece.state is PieceState.ON_OUTER_PATH
+    assert next_move.piece.path_progress == 6
+
+
+@pytest.mark.parametrize("color", ALL_COLORS)
+def test_home_entry_still_works_after_genuine_full_outer_lap(color: PlayerColor) -> None:
+    piece = outer_piece(f"{color.value}-1", color, 51)
+    turn_engine = engine_for_color(color=color, piece=piece, rolls=[1])
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece(piece.id)
+
+    assert event.moved_piece.state is PieceState.ON_HOME_PATH
+    assert event.moved_piece.path_progress == 0
+
+
+@pytest.mark.parametrize("color", ALL_COLORS)
+def test_clamped_hazard_start_square_remains_safe_and_protected(
+    color: PlayerColor,
+) -> None:
+    topology = BoardTopology()
+    hazard_index = topology.global_outer_index(color, 1)
+    start_index = topology.start_position(color)
+    opponent_color = next(candidate for candidate in PlayerColor if candidate is not color)
+    opponent_progress = (start_index - topology.start_position(opponent_color)) % 52
+    opponent_piece = outer_piece("opponent-1", opponent_color, opponent_progress)
+    piece = outer_piece(f"{color.value}-1", color, 0)
+    turn_engine = engine_for_color(
+        color=color,
+        piece=piece,
+        rolls=[1],
+        hazards=frozenset({hazard_index}),
+        opponent_piece=opponent_piece,
+    )
+    turn_engine.set_occupancy(OuterPathOccupancy(start_index, (opponent_piece,)))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece(piece.id)
+
+    assert event.hazard_to == start_index
+    assert not event.collision_outcome.capture_occurred
+    assert event.collision_outcome.destination_protected
+
+
 def test_hazard_penalty_destination_can_capture() -> None:
     blue = outer_piece("blue-1", PlayerColor.BLUE, (1 - 39) % 52)
     turn_engine = engine(rolls=[3], blue_piece=blue, hazards=frozenset({3}))
@@ -319,6 +469,20 @@ def test_boost_direct_landing_moves_piece_two_outer_steps_forward() -> None:
     assert event.boost_from == 3
     assert event.boost_to == 5
     assert event.moved_piece.path_progress == 5
+
+
+def test_boost_forward_displacement_still_uses_existing_wrap_behavior() -> None:
+    red = outer_piece("red-1", PlayerColor.RED, 50)
+    turn_engine = engine(rolls=[1], red_piece=red)
+    turn_engine.boost_positions = frozenset({51})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.boost_triggered
+    assert event.boost_from == 51
+    assert event.boost_to == 1
+    assert event.moved_piece.path_progress == 1
 
 
 def test_passing_over_boost_or_shield_does_not_trigger_effect() -> None:
@@ -488,6 +652,20 @@ def test_backward_capture_is_not_general_backward_movement() -> None:
     assert "red-1:backward_capture:3" not in {
         action.action_id for action in turn_engine.legal_actions
     }
+
+
+def test_backward_capture_does_not_wrap_before_start() -> None:
+    red = outer_piece("red-1", PlayerColor.RED, 1)
+    blue = outer_piece("blue-1", PlayerColor.BLUE, (50 - 39) % 52)
+    turn_engine = engine(rolls=[3], red_piece=red, blue_piece=blue)
+    turn_engine.set_occupancy(OuterPathOccupancy(50, (blue,)))
+
+    roll_special_to_move(turn_engine)
+
+    assert all(
+        action.kind is not MoveActionKind.BACKWARD_CAPTURE
+        for action in turn_engine.legal_actions
+    )
 
 
 def test_backward_capture_rejects_safe_and_protected_destinations() -> None:

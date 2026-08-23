@@ -10,8 +10,8 @@ from typing import Protocol
 from ludo.domain.bonus_die import NoSpecialDie, SpecialDie
 from ludo.domain.colors import PlayerColor
 from ludo.domain.hazards import (
-    backward_global_index,
     backward_relative_progress,
+    clamped_backward_relative_progress,
     forward_global_index,
 )
 from ludo.domain.movement import MAX_DICE_VALUE, MIN_DICE_VALUE, MovementRules
@@ -351,6 +351,17 @@ class TurnEngine:
             and collision.moved_piece.has_shield
         )
 
+        hazard_to = None
+        if (
+            hazard_triggered
+            and collision.moved_piece.state is PieceState.ON_OUTER_PATH
+            and collision.moved_piece.path_progress is not None
+        ):
+            hazard_to = self.movement_rules.topology.global_outer_index(
+                collision.moved_piece.owner_color,
+                collision.moved_piece.path_progress,
+            )
+
         reasons = self._bonus_reasons(self.last_roll, collision)
         event = TurnEvent(
             TurnEventKind.MOVE_RESOLVED,
@@ -365,7 +376,7 @@ class TurnEngine:
             action_kind=action.kind,
             hazard_triggered=hazard_triggered,
             hazard_from=landing_index if hazard_triggered else None,
-            hazard_to=backward_global_index(landing_index) if hazard_triggered else None,
+            hazard_to=hazard_to,
             boost_triggered=boost_triggered,
             boost_from=landing_index if boost_triggered else None,
             boost_to=forward_global_index(landing_index) if boost_triggered else None,
@@ -592,8 +603,13 @@ class TurnEngine:
         hazard_index = proposal.destination.global_outer_index
         if hazard_index is None:
             return self.collision_resolver.resolve(proposal, None)
-        penalty_index = backward_global_index(hazard_index)
-        penalty_progress = backward_relative_progress(proposal.piece.owner_color, penalty_index)
+        if proposal.piece.path_progress is None:
+            msg = "Hazard penalty requires outer-path progress."
+            raise ValueError(msg)
+        penalty_progress = clamped_backward_relative_progress(proposal.piece.path_progress)
+        penalty_index = self.movement_rules.topology.global_outer_index(
+            proposal.piece.owner_color, penalty_progress
+        )
         penalty_piece = replace(proposal.piece, path_progress=penalty_progress)
         penalty_proposal = replace(
             proposal,

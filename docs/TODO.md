@@ -141,4 +141,10 @@ Default owner: Developer / Codex-assisted.
 | Integrate shielded capture behavior | Complete | High | Developer / Codex-assisted | Capture/block rules | Player capture consumes a defender shield without Yard return, capture bonus, or Backward Capture legality against that target. |
 | Render and expose expansion state | Complete | Medium | Developer / Codex-assisted | Pygame rendering and audio service | Boost/Shield squares, shielded pieces, facade result flags, and generated audio cues are represented without adding new UI rules. |
 
+## Bugfix: Prevent Hazard Shortcut Into Home Path
+
+| Task | Status | Priority | Owner | Dependencies | Definition of Done |
+| --- | --- | --- | --- | --- | --- |
+| Clamp forced backward outer movement at Start | Complete | High | Developer / Codex-assisted | Hazard and Backward Capture rules | Hazard penalties and Backward Capture cannot wrap below player-relative progress `0`, route previews show the clamped destination, and Home entry still requires a genuine full outer lap. |
+
 Remaining planned work is release/documentation polish, not core gameplay implementation.

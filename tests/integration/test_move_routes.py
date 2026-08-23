@@ -74,6 +74,14 @@ def test_outer_path_wraparound_route_uses_one_step_per_square() -> None:
     assert [step.global_outer_index for step in legal_move.route] == [0, 1, 2]
 
 
+def test_hazard_route_clamps_penalty_at_start_without_wraparound() -> None:
+    piece = Piece("moving", PlayerColor.RED, PieceState.ON_OUTER_PATH, 0)
+
+    legal_move = _legal_move_for(piece, 1, hazard_positions=frozenset({1}))
+
+    assert [step.global_outer_index for step in legal_move.route] == [1, 0]
+
+
 def test_outer_to_home_path_route_remains_one_step_per_dice_value() -> None:
     piece = Piece("moving", PlayerColor.RED, PieceState.ON_OUTER_PATH, 50)
 
@@ -100,8 +108,13 @@ def test_outer_to_home_path_route_remains_one_step_per_dice_value() -> None:
     )
 
 
-def _legal_move_for(piece: Piece, dice_value: int) -> LegalMoveSnapshot:
-    match = _match_for(piece, dice_value)
+def _legal_move_for(
+    piece: Piece,
+    dice_value: int,
+    *,
+    hazard_positions: frozenset[int] = frozenset(),
+) -> LegalMoveSnapshot:
+    match = _match_for(piece, dice_value, hazard_positions=hazard_positions)
     facade = GameFacade.from_match(match)
     facade.roll()
     result = facade.roll_special()
@@ -109,11 +122,16 @@ def _legal_move_for(piece: Piece, dice_value: int) -> LegalMoveSnapshot:
     return result.legal_moves[0]
 
 
-def _match_for(piece: Piece, dice_value: int) -> Match:
+def _match_for(
+    piece: Piece,
+    dice_value: int,
+    *,
+    hazard_positions: frozenset[int] = frozenset(),
+) -> Match:
     match = Match.create(
         tuple(color.value.title() for color in ALL_COLORS),
         color_randomizer=FixedColorRandomizer(samples=[ALL_COLORS]),
-        hazard_positions=frozenset(),
+        hazard_positions=hazard_positions,
         dice=FixedDice([dice_value]),
         special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
