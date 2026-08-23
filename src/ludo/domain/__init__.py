@@ -10,11 +10,16 @@ from ludo.domain.bonus_die import (
 )
 from ludo.domain.colors import PlayerColor
 from ludo.domain.hazards import (
+    BOOST_COUNT,
+    BOOST_STEPS,
     HAZARD_COUNT,
     HAZARD_PENALTY_STEPS,
+    SHIELD_SQUARE_COUNT,
     FixedHazardRandomizer,
     RandomHazardRandomizer,
+    SpecialSquareLayout,
     generate_hazards,
+    generate_special_squares,
 )
 from ludo.domain.match import Match, RankingEntry
 from ludo.domain.movement import (
@@ -40,11 +45,14 @@ from ludo.domain.turns import (
 )
 
 __all__ = [
+    "BOOST_COUNT",
+    "BOOST_STEPS",
     "DECISION_TIMEOUT_SECONDS",
     "HAZARD_COUNT",
     "HAZARD_PENALTY_STEPS",
     "MAX_PLAYER_NAME_LENGTH",
     "PIECES_PER_PLAYER",
+    "SHIELD_SQUARE_COUNT",
     "SPECIAL_BONUS_SUCCESS_PROBABILITY",
     "SPECIAL_BONUS_VALUE",
     "BoardTopology",
@@ -73,9 +81,11 @@ __all__ = [
     "RandomHazardRandomizer",
     "RandomSpecialDie",
     "RankingEntry",
+    "SpecialSquareLayout",
     "TurnEngine",
     "TurnEvent",
     "TurnEventKind",
     "TurnPhase",
     "generate_hazards",
+    "generate_special_squares",
 ]

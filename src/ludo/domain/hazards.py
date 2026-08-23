@@ -10,9 +10,13 @@ from typing import Protocol, TypeVar
 from ludo.domain.board import OUTER_PATH_LENGTH, BoardTopology
 from ludo.domain.colors import PlayerColor
 
-HAZARD_COUNT = 4
+SECTOR_COUNT = 4
+HAZARD_COUNT = 8
+BOOST_COUNT = 4
+SHIELD_SQUARE_COUNT = 4
 HAZARD_PENALTY_STEPS = 2
-SECTOR_LENGTH = OUTER_PATH_LENGTH // HAZARD_COUNT
+BOOST_STEPS = 2
+SECTOR_LENGTH = OUTER_PATH_LENGTH // SECTOR_COUNT
 
 T = TypeVar("T")
 
@@ -32,14 +36,28 @@ class FixedHazardRandomizer:
 
     def choice(self, values: Sequence[T]) -> T:
         """Return the next configured hazard index."""
-        if not self.choices:
-            msg = "FixedHazardRandomizer has no remaining choices."
-            raise ValueError(msg)
-        choice = self.choices.pop(0)
-        if choice not in values:
+        while self.choices:
+            choice = self.choices.pop(0)
+            if choice in values:
+                return choice
+        if not values:
             msg = "Fixed hazard choice is not available."
             raise ValueError(msg)
-        return choice
+        return values[0]
+
+
+@dataclass(frozen=True, slots=True)
+class SpecialSquareLayout:
+    """Fixed match special-square positions on the shared outer path."""
+
+    hazards: frozenset[int]
+    boosts: frozenset[int]
+    shields: frozenset[int]
+
+    @property
+    def all_positions(self) -> frozenset[int]:
+        """Return every special-square position."""
+        return self.hazards | self.boosts | self.shields
 
 
 @dataclass(slots=True)
@@ -57,23 +75,45 @@ def generate_hazards(
     randomizer: HazardRandomizer | None = None,
     topology: BoardTopology | None = None,
 ) -> frozenset[int]:
-    """Generate one non-safe hazard in each board sector."""
+    """Generate eight non-safe hazards, two in each board sector."""
+    return generate_special_squares(randomizer, topology).hazards
+
+
+def generate_special_squares(
+    randomizer: HazardRandomizer | None = None,
+    topology: BoardTopology | None = None,
+) -> SpecialSquareLayout:
+    """Generate hazards, boosts, and shield squares with fixed per-sector distribution."""
     chooser = randomizer or RandomHazardRandomizer()
     board = topology or BoardTopology()
-    hazards = []
-    for sector in range(HAZARD_COUNT):
+    hazards: list[int] = []
+    boosts: list[int] = []
+    shields: list[int] = []
+    for sector in range(SECTOR_COUNT):
         start = sector * SECTOR_LENGTH
         end = start + SECTOR_LENGTH
-        candidates = tuple(
+        candidates = [
             index for index in range(start, end) if not board.is_safe_outer_position(index)
-        )
-        hazards.append(chooser.choice(candidates))
-    return frozenset(hazards)
+        ]
+        for target in (hazards, hazards, boosts, shields):
+            choice = chooser.choice(tuple(candidates))
+            target.append(choice)
+            candidates.remove(choice)
+    return SpecialSquareLayout(
+        hazards=frozenset(hazards),
+        boosts=frozenset(boosts),
+        shields=frozenset(shields),
+    )
 
 
 def backward_global_index(global_index: int, steps: int = HAZARD_PENALTY_STEPS) -> int:
     """Return a global outer index moved backward by ``steps`` with wraparound."""
     return (global_index - steps) % OUTER_PATH_LENGTH
+
+
+def forward_global_index(global_index: int, steps: int = BOOST_STEPS) -> int:
+    """Return a global outer index moved forward by ``steps`` with wraparound."""
+    return (global_index + steps) % OUTER_PATH_LENGTH
 
 
 def backward_relative_progress(color: PlayerColor, global_index: int) -> int:

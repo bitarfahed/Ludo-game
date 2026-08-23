@@ -131,4 +131,14 @@ Default owner: Developer / Codex-assisted.
 | Mark center cells non-traversable | Complete | Medium | Developer / Codex-assisted | Board renderer | Non-playable center cells around Finish regions are dark and separate from Outer/Home/Finish/Dice cells. |
 | Preserve hazard/safe compatibility | Complete | High | Developer / Codex-assisted | Hazard generation | Hazards remain one per sector and do not overlap corrected safe/start squares. |
 
+## Board Expansion: Hazards, Boost Squares, and Shields
+
+| Task | Status | Priority | Owner | Dependencies | Definition of Done |
+| --- | --- | --- | --- | --- | --- |
+| Expand special-square layout | Complete | High | Developer / Codex-assisted | Board topology and safe-square rules | Each match generates 8 Hazards, 4 Boosts, and 4 Shield squares with per-sector distribution and no overlap with safe/start squares. |
+| Implement Boost Squares | Complete | High | Developer / Codex-assisted | Movement and collision rules | Direct Boost landings force two outer steps forward, resolve final collision, and do not chain additional special-square effects. |
+| Implement Shield Squares and state | Complete | High | Developer / Codex-assisted | Piece state and facade snapshots | Direct Shield-square landings grant at most one shield, shields can be reacquired after use, and shields are removed on Home Path entry or Finish. |
+| Integrate shielded capture behavior | Complete | High | Developer / Codex-assisted | Capture/block rules | Player capture consumes a defender shield without Yard return, capture bonus, or Backward Capture legality against that target. |
+| Render and expose expansion state | Complete | Medium | Developer / Codex-assisted | Pygame rendering and audio service | Boost/Shield squares, shielded pieces, facade result flags, and generated audio cues are represented without adding new UI rules. |
+
 Remaining planned work is release/documentation polish, not core gameplay implementation.

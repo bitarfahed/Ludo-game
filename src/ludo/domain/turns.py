@@ -9,7 +9,11 @@ from typing import Protocol
 
 from ludo.domain.bonus_die import NoSpecialDie, SpecialDie
 from ludo.domain.colors import PlayerColor
-from ludo.domain.hazards import backward_global_index, backward_relative_progress
+from ludo.domain.hazards import (
+    backward_global_index,
+    backward_relative_progress,
+    forward_global_index,
+)
 from ludo.domain.movement import MAX_DICE_VALUE, MIN_DICE_VALUE, MovementRules
 from ludo.domain.occupancy import CollisionOutcome, CollisionResolver, OuterPathOccupancy
 from ludo.domain.pieces import Piece, PieceState
@@ -126,6 +130,11 @@ class TurnEvent:
     hazard_triggered: bool = False
     hazard_from: int | None = None
     hazard_to: int | None = None
+    boost_triggered: bool = False
+    boost_from: int | None = None
+    boost_to: int | None = None
+    shield_acquired: bool = False
+    shield_broken: bool = False
 
     @property
     def bonus_granted(self) -> bool:
@@ -155,6 +164,8 @@ class TurnEngine:
     movement_rules: MovementRules = field(default_factory=MovementRules)
     collision_resolver: CollisionResolver = field(default_factory=CollisionResolver)
     hazard_positions: frozenset[int] = frozenset()
+    boost_positions: frozenset[int] = frozenset()
+    shield_square_positions: frozenset[int] = frozenset()
     current_player_index: int = 0
     phase: TurnPhase = TurnPhase.WAITING_FOR_ROLL
     last_roll: int | None = None
@@ -326,6 +337,19 @@ class TurnEngine:
         self._remove_piece_from_occupancies(piece_id)
         collision = self._resolve_action_collision(action)
         self._apply_collision(collision)
+        landing_index = proposal.destination.global_outer_index
+        hazard_triggered = (
+            action.kind is MoveActionKind.FORWARD and landing_index in self.hazard_positions
+        )
+        boost_triggered = (
+            action.kind is MoveActionKind.FORWARD and landing_index in self.boost_positions
+        )
+        shield_acquired = (
+            action.kind is MoveActionKind.FORWARD
+            and landing_index in self.shield_square_positions
+            and not proposal.piece.has_shield
+            and collision.moved_piece.has_shield
+        )
 
         reasons = self._bonus_reasons(self.last_roll, collision)
         event = TurnEvent(
@@ -339,29 +363,14 @@ class TurnEngine:
             collision_outcome=collision,
             bonus_reasons=frozenset(reasons),
             action_kind=action.kind,
-            hazard_triggered=(
-                action.kind is MoveActionKind.FORWARD
-                and proposal.destination.global_outer_index in self.hazard_positions
-                and collision.moved_piece.state is PieceState.ON_OUTER_PATH
-                and collision.moved_piece.path_progress is not None
-                and collision.moved_piece.path_progress
-                == backward_relative_progress(
-                    collision.moved_piece.owner_color,
-                    backward_global_index(proposal.destination.global_outer_index),
-                )
-            ),
-            hazard_from=(
-                proposal.destination.global_outer_index
-                if action.kind is MoveActionKind.FORWARD
-                and proposal.destination.global_outer_index in self.hazard_positions
-                else None
-            ),
-            hazard_to=(
-                backward_global_index(proposal.destination.global_outer_index)
-                if action.kind is MoveActionKind.FORWARD
-                and proposal.destination.global_outer_index in self.hazard_positions
-                else None
-            ),
+            hazard_triggered=hazard_triggered,
+            hazard_from=landing_index if hazard_triggered else None,
+            hazard_to=backward_global_index(landing_index) if hazard_triggered else None,
+            boost_triggered=boost_triggered,
+            boost_from=landing_index if boost_triggered else None,
+            boost_to=forward_global_index(landing_index) if boost_triggered else None,
+            shield_acquired=shield_acquired,
+            shield_broken=collision.shield_broken_piece is not None,
         )
         if reasons:
             self.phase = TurnPhase.WAITING_FOR_ROLL
@@ -447,6 +456,8 @@ class TurnEngine:
         self._replace_piece(collision.moved_piece)
         if collision.captured_piece is not None:
             self._replace_piece(collision.captured_piece)
+        if collision.shield_broken_piece is not None:
+            self._replace_piece(collision.shield_broken_piece)
         if collision.destination_occupancy is not None:
             self.outer_occupancies[
                 collision.destination_occupancy.global_index
@@ -564,6 +575,16 @@ class TurnEngine:
             and proposal.destination.global_outer_index in self.hazard_positions
         ):
             return self._resolve_hazard_penalty(proposal)
+        if (
+            action.kind is MoveActionKind.FORWARD
+            and proposal.destination.global_outer_index in self.boost_positions
+        ):
+            return self._resolve_boost_displacement(proposal)
+        if (
+            action.kind is MoveActionKind.FORWARD
+            and proposal.destination.global_outer_index in self.shield_square_positions
+        ):
+            proposal = replace(proposal, piece=replace(proposal.piece, has_shield=True))
         occupancy = self._destination_occupancy(proposal)
         return self.collision_resolver.resolve(proposal, occupancy)
 
@@ -585,6 +606,26 @@ class TurnEngine:
         )
         return self.collision_resolver.resolve(
             penalty_proposal, self.outer_occupancies.get(penalty_index)
+        )
+
+    def _resolve_boost_displacement(self, proposal) -> CollisionOutcome:
+        boost_index = proposal.destination.global_outer_index
+        if boost_index is None:
+            return self.collision_resolver.resolve(proposal, None)
+        boosted_index = forward_global_index(boost_index)
+        boosted_progress = backward_relative_progress(proposal.piece.owner_color, boosted_index)
+        boosted_piece = replace(proposal.piece, path_progress=boosted_progress)
+        boosted_proposal = replace(
+            proposal,
+            piece=boosted_piece,
+            destination=proposal.destination.__class__.outer(
+                proposal.piece.owner_color,
+                boosted_progress,
+                boosted_index,
+            ),
+        )
+        return self.collision_resolver.resolve(
+            boosted_proposal, self.outer_occupancies.get(boosted_index)
         )
 
     @staticmethod

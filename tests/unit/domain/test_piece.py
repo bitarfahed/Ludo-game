@@ -19,6 +19,7 @@ def test_new_piece_starts_in_yard_with_no_path_progress() -> None:
     assert piece.owner_color is PlayerColor.RED
     assert piece.state is PieceState.IN_YARD
     assert piece.path_progress is None
+    assert not piece.has_shield
 
 
 def test_active_piece_requires_non_negative_path_progress() -> None:
@@ -70,4 +71,34 @@ def test_piece_rejects_invalid_state() -> None:
             id="red-1",
             owner_color=PlayerColor.RED,
             state="IN_YARD",  # type: ignore[arg-type]
+        )
+
+
+def test_piece_rejects_non_bool_shield_state() -> None:
+    with pytest.raises(TypeError, match="has_shield"):
+        Piece(
+            id="red-1",
+            owner_color=PlayerColor.RED,
+            has_shield="yes",  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize(
+    "state,path_progress",
+    [
+        (PieceState.IN_YARD, None),
+        (PieceState.ON_HOME_PATH, 0),
+        (PieceState.FINISHED, None),
+    ],
+)
+def test_piece_rejects_shield_outside_outer_path(
+    state: PieceState, path_progress: int | None
+) -> None:
+    with pytest.raises(ValueError, match="Shield"):
+        Piece(
+            id="red-1",
+            owner_color=PlayerColor.RED,
+            state=state,
+            path_progress=path_progress,
+            has_shield=True,
         )

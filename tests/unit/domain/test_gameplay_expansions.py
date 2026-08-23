@@ -19,6 +19,7 @@ from ludo.domain import (
     TurnEventKind,
     TurnPhase,
     generate_hazards,
+    generate_special_squares,
 )
 from ludo.domain.bonus_die import SPECIAL_BONUS_VALUE, RandomSpecialDie
 from ludo.domain.match import FixedColorRandomizer
@@ -194,12 +195,26 @@ def test_effective_backward_capture_prevents_base_fallback() -> None:
     )
 
 
-def test_hazard_generation_has_one_per_sector_and_no_safe_overlap() -> None:
-    hazards = generate_hazards(FixedHazardRandomizer([1, 14, 27, 40]))
+SPECIAL_SEQUENCE = [1, 2, 3, 4, 14, 15, 16, 17, 27, 28, 29, 30, 40, 41, 42, 43]
 
-    assert hazards == frozenset({1, 14, 27, 40})
-    assert {hazard // 13 for hazard in hazards} == {0, 1, 2, 3}
+
+def test_special_square_generation_has_required_distribution_and_no_safe_overlap() -> None:
+    layout = generate_special_squares(FixedHazardRandomizer(SPECIAL_SEQUENCE.copy()))
+    hazards = generate_hazards(FixedHazardRandomizer(SPECIAL_SEQUENCE.copy()))
+
+    assert layout.hazards == frozenset({1, 2, 14, 15, 27, 28, 40, 41})
+    assert layout.boosts == frozenset({3, 16, 29, 42})
+    assert layout.shields == frozenset({4, 17, 30, 43})
+    assert hazards == layout.hazards
+    assert {sector: sum(index // 13 == sector for index in hazards) for sector in range(4)} == {
+        0: 2,
+        1: 2,
+        2: 2,
+        3: 2,
+    }
+    assert len(layout.all_positions) == 16
     assert hazards.isdisjoint(BoardTopology().safe_outer_positions)
+    assert layout.all_positions.isdisjoint(BoardTopology().safe_outer_positions)
 
 
 def test_match_exposes_fixed_hazard_positions() -> None:
@@ -209,13 +224,15 @@ def test_match_exposes_fixed_hazard_positions() -> None:
             choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
             samples=[(PlayerColor.RED, PlayerColor.YELLOW)],
         ),
-        hazard_randomizer=FixedHazardRandomizer([1, 14, 27, 40]),
+        hazard_randomizer=FixedHazardRandomizer(SPECIAL_SEQUENCE.copy()),
         dice=FixedDice([1]),
         special_die=FixedSpecialDie([0]),
         clock=FixedClock(),
     )
 
-    assert match.turn_engine.hazard_positions == frozenset({1, 14, 27, 40})
+    assert match.turn_engine.hazard_positions == frozenset({1, 2, 14, 15, 27, 28, 40, 41})
+    assert match.turn_engine.boost_positions == frozenset({3, 16, 29, 42})
+    assert match.turn_engine.shield_square_positions == frozenset({4, 17, 30, 43})
 
 
 def test_passing_over_hazard_does_not_trigger_penalty() -> None:
@@ -291,6 +308,150 @@ def test_hazard_penalty_does_not_chain_to_second_hazard() -> None:
     assert event.moved_piece.path_progress == 1
 
 
+def test_boost_direct_landing_moves_piece_two_outer_steps_forward() -> None:
+    turn_engine = engine(rolls=[3])
+    turn_engine.boost_positions = frozenset({3})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.boost_triggered
+    assert event.boost_from == 3
+    assert event.boost_to == 5
+    assert event.moved_piece.path_progress == 5
+
+
+def test_passing_over_boost_or_shield_does_not_trigger_effect() -> None:
+    turn_engine = engine(rolls=[3])
+    turn_engine.boost_positions = frozenset({2})
+    turn_engine.shield_square_positions = frozenset({1})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert not event.boost_triggered
+    assert not event.shield_acquired
+    assert event.moved_piece.path_progress == 3
+    assert not event.moved_piece.has_shield
+
+
+def test_boost_forced_destination_can_capture_and_grant_bonus() -> None:
+    blue = outer_piece("blue-1", PlayerColor.BLUE, (5 - 39) % 52)
+    turn_engine = engine(rolls=[3], blue_piece=blue)
+    turn_engine.boost_positions = frozenset({3})
+    turn_engine.set_occupancy(OuterPathOccupancy(5, (blue,)))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.boost_triggered
+    assert event.collision_outcome.capture_occurred
+    assert event.bonus_reasons == frozenset({"capture"})
+
+
+def test_boost_forced_destination_does_not_chain_other_special_squares() -> None:
+    turn_engine = engine(rolls=[3])
+    turn_engine.boost_positions = frozenset({3, 5})
+    turn_engine.hazard_positions = frozenset({5})
+    turn_engine.shield_square_positions = frozenset({5})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.boost_triggered
+    assert not event.hazard_triggered
+    assert not event.shield_acquired
+    assert event.moved_piece.path_progress == 5
+    assert not event.moved_piece.has_shield
+
+
+def test_shield_square_direct_landing_grants_one_shield() -> None:
+    turn_engine = engine(rolls=[3])
+    turn_engine.shield_square_positions = frozenset({3})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.shield_acquired
+    assert event.moved_piece.has_shield
+
+
+def test_shield_does_not_stack_when_already_carried() -> None:
+    red = outer_piece("red-1", PlayerColor.RED, 0)
+    red = replace(red, has_shield=True)
+    turn_engine = engine(rolls=[3], red_piece=red)
+    turn_engine.shield_square_positions = frozenset({3})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert not event.shield_acquired
+    assert event.moved_piece.has_shield
+
+
+def test_forward_capture_consumes_shield_without_capture_bonus() -> None:
+    blue = replace(outer_piece("blue-1", PlayerColor.BLUE, (3 - 39) % 52), has_shield=True)
+    turn_engine = engine(rolls=[3], blue_piece=blue)
+    turn_engine.set_occupancy(OuterPathOccupancy(3, (blue,)))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.shield_broken
+    assert not event.collision_outcome.capture_occurred
+    assert event.collision_outcome.captured_piece is None
+    assert event.bonus_reasons == frozenset()
+    assert turn_engine.player_by_color(PlayerColor.BLUE).pieces[0].state is PieceState.ON_OUTER_PATH
+    assert not turn_engine.player_by_color(PlayerColor.BLUE).pieces[0].has_shield
+
+
+def test_shield_can_be_reacquired_after_consumption() -> None:
+    blue = replace(outer_piece("blue-1", PlayerColor.BLUE, (3 - 39) % 52), has_shield=True)
+    turn_engine = engine(rolls=[3], blue_piece=blue)
+    turn_engine.set_occupancy(OuterPathOccupancy(3, (blue,)))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.shield_broken
+    unshielded = turn_engine.player_by_color(PlayerColor.BLUE).pieces[0]
+    assert not unshielded.has_shield
+    reacquire_engine = TurnEngine(
+        players=(
+            player(
+                "blue",
+                PlayerColor.BLUE,
+                (
+                    unshielded,
+                    Piece("blue-finished-1", PlayerColor.BLUE, PieceState.FINISHED),
+                    Piece("blue-finished-2", PlayerColor.BLUE, PieceState.FINISHED),
+                    Piece("blue-finished-3", PlayerColor.BLUE, PieceState.FINISHED),
+                ),
+            ),
+            player("red", PlayerColor.RED),
+        ),
+        dice=FixedDice([3]),
+        special_die=FixedSpecialDie([0]),
+        clock=FixedClock(),
+        shield_square_positions=frozenset({6}),
+    )
+    roll_special_to_move(reacquire_engine)
+    reacquired = reacquire_engine.select_piece("blue-1")
+    assert reacquired.moved_piece.has_shield
+
+
+def test_hazard_ignores_shield_and_keeps_it_after_displacement() -> None:
+    red = replace(outer_piece("red-1", PlayerColor.RED, 0), has_shield=True)
+    turn_engine = engine(rolls=[3], red_piece=red, hazards=frozenset({3}))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.hazard_triggered
+    assert event.moved_piece.path_progress == 1
+    assert event.moved_piece.has_shield
+
+
 def test_backward_capture_is_legal_only_for_vulnerable_opponent_at_exact_distance() -> None:
     red = outer_piece("red-1", PlayerColor.RED, 10)
     blue = outer_piece("blue-1", PlayerColor.BLUE, (7 - 39) % 52)
@@ -302,6 +463,20 @@ def test_backward_capture_is_legal_only_for_vulnerable_opponent_at_exact_distanc
     assert "red-1:backward_capture:3" in {
         action.action_id for action in turn_engine.legal_actions
     }
+
+
+def test_shielded_target_does_not_expose_backward_capture() -> None:
+    red = outer_piece("red-1", PlayerColor.RED, 10)
+    blue = replace(outer_piece("blue-1", PlayerColor.BLUE, (7 - 39) % 52), has_shield=True)
+    turn_engine = engine(rolls=[3], red_piece=red, blue_piece=blue)
+    turn_engine.set_occupancy(OuterPathOccupancy(7, (blue,)))
+
+    roll_special_to_move(turn_engine)
+
+    assert all(
+        action.kind is not MoveActionKind.BACKWARD_CAPTURE
+        for action in turn_engine.legal_actions
+    )
 
 
 def test_backward_capture_is_not_general_backward_movement() -> None:
@@ -343,3 +518,22 @@ def test_successful_backward_capture_returns_opponent_to_yard_and_grants_bonus()
     assert event.collision_outcome.captured_piece.state is PieceState.IN_YARD
     assert event.moved_piece.path_progress == 7
     assert event.bonus_reasons == frozenset({"capture"})
+
+
+def test_shield_is_removed_on_home_path_entry_and_finished() -> None:
+    red = replace(outer_piece("red-1", PlayerColor.RED, 51), has_shield=True)
+    enter_home = engine(rolls=[1], red_piece=red)
+
+    roll_special_to_move(enter_home)
+    home_event = enter_home.select_piece("red-1")
+
+    assert home_event.moved_piece.state is PieceState.ON_HOME_PATH
+    assert not home_event.moved_piece.has_shield
+
+    finish_piece = replace(home_piece("red-1", PlayerColor.RED, 4), has_shield=False)
+    finish_engine = engine(rolls=[1], red_piece=finish_piece)
+    roll_special_to_move(finish_engine)
+    finish_event = finish_engine.select_piece("red-1")
+
+    assert finish_event.moved_piece.state is PieceState.FINISHED
+    assert not finish_event.moved_piece.has_shield

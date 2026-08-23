@@ -82,6 +82,12 @@ class BoardRenderer:
             if index in snapshot.hazard_positions:
                 label = font.render("!", True, theme.DANGER)
                 surface.blit(label, label.get_rect(center=(rect.center[0], rect.center[1] + 1)))
+            if index in snapshot.boost_positions:
+                label = font.render("+2", True, theme.ACCENT_DARK)
+                surface.blit(label, label.get_rect(center=rect.center))
+            if index in snapshot.shield_square_positions:
+                label = font.render("O", True, theme.ACCENT_DARK)
+                surface.blit(label, label.get_rect(center=rect.center))
 
     def _draw_home_paths(self, surface: pygame.Surface) -> None:
         for color in PlayerColor:

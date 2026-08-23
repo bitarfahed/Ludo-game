@@ -9,7 +9,7 @@ from enum import StrEnum
 
 from ludo.domain.board import OUTER_PATH_LENGTH, BoardTopology
 from ludo.domain.colors import PlayerColor
-from ludo.domain.hazards import HazardRandomizer, backward_global_index
+from ludo.domain.hazards import HazardRandomizer, backward_global_index, forward_global_index
 from ludo.domain.match import ColorRandomizer, Match
 from ludo.domain.movement import MoveDestination, MoveDestinationKind
 from ludo.domain.pieces import Piece, PieceState
@@ -54,6 +54,7 @@ class PieceSnapshot:
     owner_color: PlayerColor
     state: PieceState
     path_progress: int | None
+    has_shield: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +143,8 @@ class GameSnapshot:
     special_bonus_applied: bool = False
     approved_movement_value: int | None = None
     hazard_positions: frozenset[int] = frozenset()
+    boost_positions: frozenset[int] = frozenset()
+    shield_square_positions: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +169,11 @@ class FacadeResult:
     hazard_triggered: bool = False
     hazard_from: int | None = None
     hazard_to: int | None = None
+    boost_triggered: bool = False
+    boost_from: int | None = None
+    boost_to: int | None = None
+    shield_acquired: bool = False
+    shield_broken: bool = False
 
     @property
     def capture_occurred(self) -> bool:
@@ -222,6 +230,8 @@ class GameFacade:
         color_randomizer: ColorRandomizer | None = None,
         hazard_randomizer: HazardRandomizer | None = None,
         hazard_positions: frozenset[int] | None = None,
+        boost_positions: frozenset[int] | None = None,
+        shield_square_positions: frozenset[int] | None = None,
         dice: Dice | None = None,
         special_die: SpecialDie | None = None,
         clock: Clock | None = None,
@@ -233,6 +243,8 @@ class GameFacade:
             color_randomizer=color_randomizer,
             hazard_randomizer=hazard_randomizer,
             hazard_positions=hazard_positions,
+            boost_positions=boost_positions,
+            shield_square_positions=shield_square_positions,
             dice=dice,
             special_die=special_die,
             clock=clock or self._pausable_clock,
@@ -282,6 +294,8 @@ class GameFacade:
             legal_moves=self.legal_moves(),
             outer_occupancies=_outer_occupancy_snapshots(match),
             hazard_positions=match.turn_engine.hazard_positions,
+            boost_positions=match.turn_engine.boost_positions,
+            shield_square_positions=match.turn_engine.shield_square_positions,
             rankings=rankings,
             is_complete=match.is_complete,
         )
@@ -315,6 +329,7 @@ class GameFacade:
                 action,
                 base_roll=match.turn_engine.last_roll,
                 hazard_positions=match.turn_engine.hazard_positions,
+                boost_positions=match.turn_engine.boost_positions,
             )
             for action in match.turn_engine.legal_actions
         )
@@ -430,6 +445,11 @@ class GameFacade:
             hazard_triggered=event.hazard_triggered,
             hazard_from=event.hazard_from,
             hazard_to=event.hazard_to,
+            boost_triggered=event.boost_triggered,
+            boost_from=event.boost_from,
+            boost_to=event.boost_to,
+            shield_acquired=event.shield_acquired,
+            shield_broken=event.shield_broken,
         )
 
     def _require_match(self) -> Match:
@@ -468,6 +488,7 @@ def _piece_snapshot(piece: Piece) -> PieceSnapshot:
         owner_color=piece.owner_color,
         state=piece.state,
         path_progress=piece.path_progress,
+        has_shield=piece.has_shield,
     )
 
 
@@ -488,7 +509,7 @@ def _outer_occupancy_snapshots(match: Match) -> tuple[OuterOccupancySnapshot, ..
 
 
 def _legal_move_snapshot(
-    action, *, base_roll: int, hazard_positions: frozenset[int]
+    action, *, base_roll: int, hazard_positions: frozenset[int], boost_positions: frozenset[int]
 ) -> LegalMoveSnapshot:
     piece = action.proposal.original_piece
     return LegalMoveSnapshot(
@@ -506,6 +527,7 @@ def _legal_move_snapshot(
             action.movement_value,
             action_kind=action.kind,
             hazard_positions=hazard_positions,
+            boost_positions=boost_positions,
         ),
     )
 
@@ -516,6 +538,7 @@ def _route_snapshot(
     *,
     action_kind: MoveActionKind = MoveActionKind.FORWARD,
     hazard_positions: frozenset[int] = frozenset(),
+    boost_positions: frozenset[int] = frozenset(),
 ) -> tuple[MoveRouteStepSnapshot, ...]:
     if action_kind is MoveActionKind.BACKWARD_CAPTURE:
         if piece.path_progress is None:
@@ -555,6 +578,22 @@ def _route_snapshot(
                 ),
                 MoveRouteStepSnapshot(
                     MoveDestinationKind.OUTER_PATH, global_outer_index=second_penalty
+                ),
+            )
+        if (
+            final is not None
+            and final.global_outer_index is not None
+            and final.global_outer_index in boost_positions
+        ):
+            first_boost = forward_global_index(final.global_outer_index, 1)
+            second_boost = forward_global_index(final.global_outer_index, 2)
+            return (
+                *route,
+                MoveRouteStepSnapshot(
+                    MoveDestinationKind.OUTER_PATH, global_outer_index=first_boost
+                ),
+                MoveRouteStepSnapshot(
+                    MoveDestinationKind.OUTER_PATH, global_outer_index=second_boost
                 ),
             )
         return route

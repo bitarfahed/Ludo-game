@@ -65,6 +65,7 @@ def _piece_groups(snapshot: GameSnapshot, geometry: BoardGeometry) -> tuple[Piec
                     symbol=_piece_symbol(piece),
                     color_value=piece.owner_color.value,
                     location=location,
+                    has_shield=piece.has_shield,
                 )
             )
             bounds_by_location[location] = bounds

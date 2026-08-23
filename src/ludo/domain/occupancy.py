@@ -37,6 +37,7 @@ class CollisionOutcome:
     captured_piece: Piece | None
     destination_occupancy: OuterPathOccupancy | None
     destination_protected: bool
+    shield_broken_piece: Piece | None = None
 
     @property
     def capture_occurred(self) -> bool:
@@ -81,8 +82,25 @@ class CollisionResolver:
 
         vulnerable_piece = self._vulnerable_opponent(proposed_move.piece, occupancy)
         if vulnerable_piece is not None:
+            if vulnerable_piece.has_shield:
+                unshielded = replace(vulnerable_piece, has_shield=False)
+                destination_occupancy = OuterPathOccupancy(
+                    global_index=occupancy.global_index,
+                    pieces=(unshielded, proposed_move.piece),
+                    was_protected=False,
+                )
+                return CollisionOutcome(
+                    proposed_move.piece,
+                    None,
+                    destination_occupancy,
+                    self.is_protected_occupancy(destination_occupancy),
+                    unshielded,
+                )
             captured_piece = replace(
-                vulnerable_piece, state=PieceState.IN_YARD, path_progress=None
+                vulnerable_piece,
+                state=PieceState.IN_YARD,
+                path_progress=None,
+                has_shield=False,
             )
             destination_occupancy = OuterPathOccupancy(
                 global_index=occupancy.global_index, pieces=(proposed_move.piece,)

@@ -34,6 +34,7 @@ class PieceRenderItem:
     symbol: str
     color_value: str
     location: PieceLocationKey
+    has_shield: bool = False
 
 
 @dataclass(frozen=True, slots=True)

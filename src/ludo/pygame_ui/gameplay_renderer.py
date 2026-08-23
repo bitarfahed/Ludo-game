@@ -77,6 +77,14 @@ class GameplayRenderer:
                 radius = max(10, min(radius, self.geometry.cell_size // 2 - 3))
                 pygame.draw.circle(surface, color, group.center, radius)
                 pygame.draw.circle(surface, theme.SURFACE, group.center, radius, width=2)
+                if piece.has_shield:
+                    pygame.draw.circle(
+                        surface,
+                        theme.ACCENT_DARK,
+                        group.center,
+                        radius + 4,
+                        width=3,
+                    )
                 label = font.render(piece.symbol, True, theme.SURFACE)
                 surface.blit(label, label.get_rect(center=group.center))
 

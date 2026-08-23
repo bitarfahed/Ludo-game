@@ -27,6 +27,7 @@ class Piece:
     owner_color: PlayerColor
     state: PieceState = PieceState.IN_YARD
     path_progress: int | None = None
+    has_shield: bool = False
 
     def __post_init__(self) -> None:
         """Validate identity, ownership, and state/location consistency."""
@@ -39,12 +40,21 @@ class Piece:
         if not isinstance(self.state, PieceState):
             msg = "Piece state must be a PieceState."
             raise TypeError(msg)
+        if not isinstance(self.has_shield, bool):
+            msg = "Piece has_shield must be a bool."
+            raise TypeError(msg)
 
         if self.state in {PieceState.IN_YARD, PieceState.FINISHED}:
+            if self.has_shield:
+                msg = f"{self.state.name} pieces cannot carry Shields."
+                raise ValueError(msg)
             self._validate_off_path()
             return
 
         self._validate_on_path()
+        if self.state is PieceState.ON_HOME_PATH and self.has_shield:
+            msg = "ON_HOME_PATH pieces cannot carry Shields."
+            raise ValueError(msg)
 
     def _validate_off_path(self) -> None:
         if self.path_progress is not None:

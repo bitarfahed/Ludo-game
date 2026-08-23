@@ -1846,6 +1846,109 @@ Lessons learned:
 - Legal-destination affordances are safest when treated as a projection of facade actions, not as
   a separate UI movement calculation.
 
+## Board Expansion — Hazards, Boost Squares & Shields
+
+Prompt ID: Board Expansion
+
+Title: Hazards, Boost Squares & Shields
+
+Goal: Extend the implemented game with a larger per-match special-square layout, direct-landing
+Boost effects, and per-piece Shields without changing approved Ludo core rules.
+
+Context: The game already included the playable facade/Pygame flow, optional Special Bonus Die,
+Backward Capture, four-Hazard behavior, destination markers, animation routes, and static/audio
+feedback systems.
+
+Full prompt or faithful prompt record: The board-expansion prompt was provided as an attached
+pasted text file. Its authoritative requirements included:
+
+- generate 8 Hazard squares, 4 Boost squares, and 4 Shield squares per match;
+- distribute special squares by sector: 2 Hazards, 1 Boost, and 1 Shield per sector;
+- prevent overlap between special-square categories and with all safe/start squares;
+- keep the layout fixed for the match and deterministic through injectable randomness;
+- preserve Hazard direct-landing behavior as a mandatory two-step backward forced move with no
+  chains;
+- add Boost direct-landing behavior as a mandatory two-step forward forced move with final
+  collision resolution and no chains;
+- add Shield-square direct landing that grants one carried shield, with reacquisition allowed after
+  consumption;
+- make shields protect only against player capture, consuming the shield while leaving both pieces
+  in place, with no Yard return and no capture bonus;
+- keep Backward Capture from targeting shielded pieces;
+- remove carried shields on Home Path entry and Finished;
+- expose expansion state through facade snapshots/results and keep rendering dependent on public
+  state;
+- render Hazards, Boosts, Shield squares, and shielded pieces distinctly while preserving legal
+  destination markers;
+- add generated audio cues for Boost, Shield acquired, and Shield broken;
+- do not implement Portals, Double-or-Nothing, Coins/Shop, Time Crystal, Split Dice, Bot logic, or
+  networking;
+- update only `docs/TODO.md` and this prompts book;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/domain/hazards.py`
+- `src/ludo/domain/pieces.py`
+- `src/ludo/domain/movement.py`
+- `src/ludo/domain/occupancy.py`
+- `src/ludo/domain/turns.py`
+- `src/ludo/domain/match.py`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/app/facade.py`
+- `src/ludo/pygame_ui/board_renderer.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/render_models.py`
+- `src/ludo/pygame_ui/render_state.py`
+- `src/ludo/audio/service.py`
+- affected tests under `tests/`
+
+Constraints:
+
+- Do not alter dice probabilities, Triple Six, forced-six, ranking, timers, the 52-square topology,
+  safe-square rules, or unrelated gameplay behavior.
+- Do not add new movement chains from forced Hazard/Boost destinations.
+- Do not infer shield/capture rules inside Pygame rendering.
+- Do not add copyrighted audio assets.
+
+Verification performed:
+
+- Added tests for special-square generation counts, sector distribution, uniqueness, safe-square
+  exclusion, facade exposure, Boost movement/capture/no-chain behavior, Shield acquisition,
+  non-stacking, shield break, reacquisition, Hazard/shield interaction, Backward Capture shielding,
+  and shield removal on Home Path/Finished.
+- Added UI/facade/audio tests for shield state projection and Boost/Shield result cues.
+- Final verification to run: `uv sync`, `uv run pytest`, `uv run pytest --cov`,
+  `uv run ruff check .`, and practical smoke/manual launch inspection.
+
+Result summary:
+
+- Special-square generation now produces 16 non-overlapping match-fixed positions: 8 Hazards, 4
+  Boosts, and 4 Shield squares.
+- Boosts are domain-resolved direct-landing effects that force two forward outer steps and resolve
+  the final occupancy once.
+- Shields are stored on immutable piece state, exposed through facade snapshots, consumed by player
+  capture, and cleared on Home Path entry or Finished.
+- The Pygame layer renders Boost/Shield squares and shielded pieces from facade/render state only.
+- Generated audio cues were added for Boost, Shield acquired, and Shield broken.
+
+Issues discovered:
+
+- Shield reacquisition tests must respect turn ownership; the final regression uses a focused
+  current-player setup rather than selecting another player's piece out of turn.
+
+Follow-up/refinement:
+
+- A later UX polish pass can refine iconography for Boost/Shield squares once visual assets or a
+  final symbol set are approved.
+
+Lessons learned:
+
+- Forced board effects stay easier to reason about when the landing square is resolved first, then
+  a single authoritative forced displacement is applied without re-entering special-square logic.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

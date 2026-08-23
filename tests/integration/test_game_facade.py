@@ -116,6 +116,30 @@ def test_current_player_and_phase_are_queryable() -> None:
     assert facade.seconds_remaining() == 10
 
 
+def test_snapshot_exposes_special_square_positions_and_piece_shield_state() -> None:
+    facade = GameFacade()
+    facade.start_match(
+        ("Alice", "Bob"),
+        color_randomizer=FixedColorRandomizer(
+            choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
+            samples=[(PlayerColor.RED, PlayerColor.YELLOW)],
+        ),
+        hazard_positions=frozenset({1, 2, 14, 15, 27, 28, 40, 41}),
+        boost_positions=frozenset({3, 16, 29, 42}),
+        shield_square_positions=frozenset({4, 17, 30, 43}),
+        dice=FixedDice([6]),
+        special_die=FixedSpecialDie([0]),
+        clock=FixedClock(),
+    )
+
+    snapshot = facade.snapshot()
+
+    assert snapshot.hazard_positions == frozenset({1, 2, 14, 15, 27, 28, 40, 41})
+    assert snapshot.boost_positions == frozenset({3, 16, 29, 42})
+    assert snapshot.shield_square_positions == frozenset({4, 17, 30, 43})
+    assert not snapshot.players[0].pieces[0].has_shield
+
+
 def test_ui_facade_pause_preserves_remaining_time(monkeypatch) -> None:
     facade_module = import_module("ludo.app.facade")
     times = iter([0.0, 4.0, 4.0, 4.0, 9.0, 11.0])

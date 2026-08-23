@@ -20,6 +20,9 @@ class AudioEvent(StrEnum):
     CAPTURE = "capture"
     FINISH = "finish"
     HAZARD = "hazard"
+    BOOST = "boost"
+    SHIELD = "shield"
+    SHIELD_BREAK = "shield_break"
     RANKING = "ranking"
     UI_CLICK = "ui_click"
 
@@ -109,6 +112,12 @@ def audio_events_for_result(result: FacadeResult) -> tuple[AudioEvent, ...]:
         events.append(AudioEvent.CAPTURE)
     if result.hazard_triggered:
         events.append(AudioEvent.HAZARD)
+    if result.boost_triggered:
+        events.append(AudioEvent.BOOST)
+    if result.shield_acquired:
+        events.append(AudioEvent.SHIELD)
+    if result.shield_broken:
+        events.append(AudioEvent.SHIELD_BREAK)
     if result.piece_finished:
         events.append(AudioEvent.FINISH)
     if result.ranked_players:
@@ -125,6 +134,9 @@ def _cue(event: AudioEvent, settings: AudioSettings) -> tuple[int, int, float]:
         AudioEvent.CAPTURE: (220, 140, gameplay),
         AudioEvent.FINISH: (760, 180, gameplay),
         AudioEvent.HAZARD: (150, 160, gameplay),
+        AudioEvent.BOOST: (680, 120, gameplay),
+        AudioEvent.SHIELD: (620, 140, gameplay),
+        AudioEvent.SHIELD_BREAK: (300, 130, gameplay),
         AudioEvent.RANKING: (880, 220, gameplay),
         AudioEvent.UI_CLICK: (640, 50, ui),
     }[event]

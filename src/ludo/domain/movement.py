@@ -133,7 +133,9 @@ class MovementRules:
     def _propose_yard_exit(self, piece: Piece, dice_value: int) -> ProposedMove | None:
         if dice_value != MAX_DICE_VALUE:
             return None
-        moved_piece = replace(piece, state=PieceState.ON_OUTER_PATH, path_progress=0)
+        moved_piece = replace(
+            piece, state=PieceState.ON_OUTER_PATH, path_progress=0, has_shield=False
+        )
         destination = MoveDestination.outer(
             piece.owner_color,
             relative_progress=0,
@@ -183,12 +185,19 @@ class MovementRules:
         return ProposedMove(piece, moved_piece, dice_value, destination)
 
     def _home_result(self, piece: Piece, dice_value: int, home_index: int) -> ProposedMove:
-        moved_piece = replace(piece, state=PieceState.ON_HOME_PATH, path_progress=home_index)
+        moved_piece = replace(
+            piece,
+            state=PieceState.ON_HOME_PATH,
+            path_progress=home_index,
+            has_shield=False,
+        )
         destination = MoveDestination.home(HomePathPosition(piece.owner_color, home_index))
         return ProposedMove(piece, moved_piece, dice_value, destination)
 
     def _finished_result(self, piece: Piece, dice_value: int) -> ProposedMove:
-        moved_piece = replace(piece, state=PieceState.FINISHED, path_progress=None)
+        moved_piece = replace(
+            piece, state=PieceState.FINISHED, path_progress=None, has_shield=False
+        )
         destination = MoveDestination.finished(piece.owner_color)
         return ProposedMove(piece, moved_piece, dice_value, destination)
 

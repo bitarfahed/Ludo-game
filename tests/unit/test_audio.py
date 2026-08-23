@@ -54,6 +54,23 @@ def test_audio_event_mapping_for_facade_results() -> None:
     )
 
 
+def test_audio_event_mapping_for_boost_and_shield_results() -> None:
+    result = FacadeResult(
+        FacadeResultKind.PIECE_MOVED,
+        snapshot(),
+        boost_triggered=True,
+        shield_acquired=True,
+        shield_broken=True,
+    )
+
+    assert audio_events_for_result(result) == (
+        AudioEvent.MOVE,
+        AudioEvent.BOOST,
+        AudioEvent.SHIELD,
+        AudioEvent.SHIELD_BREAK,
+    )
+
+
 def test_muted_audio_does_not_play_or_affect_gameplay_state() -> None:
     backend = FakeBackend()
     settings = replace(AudioSettings(), enabled=False)

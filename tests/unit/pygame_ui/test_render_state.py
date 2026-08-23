@@ -177,6 +177,26 @@ def test_single_piece_uses_normal_representation() -> None:
     assert state.pieces[0].summary_components == ()
 
 
+def test_shielded_piece_render_state_preserves_shield_flag() -> None:
+    red = player(
+        "red",
+        PlayerColor.RED,
+        (
+            PieceSnapshot(
+                "red-1",
+                PlayerColor.RED,
+                PieceState.ON_OUTER_PATH,
+                2,
+                has_shield=True,
+            ),
+        ),
+    )
+
+    state = build_gameplay_render_state(snapshot((red,), red), BoardGeometry())
+
+    assert state.pieces[0].pieces[0].has_shield
+
+
 def test_same_color_stack_uses_compact_summary_components() -> None:
     red = player(
         "red",

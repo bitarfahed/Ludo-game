@@ -9,7 +9,7 @@ from typing import Protocol, TypeVar
 
 from ludo.domain.bonus_die import RandomSpecialDie, SpecialDie
 from ludo.domain.colors import PlayerColor
-from ludo.domain.hazards import HazardRandomizer, generate_hazards
+from ludo.domain.hazards import HazardRandomizer, generate_special_squares
 from ludo.domain.pieces import PieceState
 from ludo.domain.players import Player
 from ludo.domain.turns import Clock, Dice, FixedClock, RandomDice, TurnEngine
@@ -110,6 +110,8 @@ class Match:
         color_randomizer: ColorRandomizer | None = None,
         hazard_randomizer: HazardRandomizer | None = None,
         hazard_positions: frozenset[int] | None = None,
+        boost_positions: frozenset[int] | None = None,
+        shield_square_positions: frozenset[int] | None = None,
         dice: Dice | None = None,
         special_die: SpecialDie | None = None,
         clock: Clock | None = None,
@@ -132,15 +134,34 @@ class Match:
             players_by_color[color] for color in CLOCKWISE_COLORS if color in players_by_color
         )
         inactive_colors = frozenset(set(PlayerColor) - set(players_by_color))
+        special_squares = None
+        if (
+            hazard_positions is None
+            and boost_positions is None
+            and shield_square_positions is None
+        ):
+            special_squares = generate_special_squares(hazard_randomizer)
         engine = TurnEngine(
             players=ordered_players,
             dice=dice or RandomDice(),
             clock=clock or FixedClock(),
             special_die=special_die or RandomSpecialDie(),
-            hazard_positions=(
-                generate_hazards(hazard_randomizer)
-                if hazard_positions is None
-                else hazard_positions
+            hazard_positions=hazard_positions
+            if hazard_positions is not None
+            else special_squares.hazards
+            if special_squares is not None
+            else frozenset(),
+            boost_positions=boost_positions
+            if boost_positions is not None
+            else special_squares.boosts
+            if special_squares is not None
+            else frozenset(),
+            shield_square_positions=(
+                shield_square_positions
+                if shield_square_positions is not None
+                else special_squares.shields
+                if special_squares is not None
+                else frozenset()
             ),
         )
         return cls(ordered_players, engine, inactive_colors)
