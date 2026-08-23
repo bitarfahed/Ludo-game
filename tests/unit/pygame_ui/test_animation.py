@@ -9,7 +9,9 @@ from ludo.app import (
 from ludo.config import AnimationSettings
 from ludo.domain import PieceState, PlayerColor
 from ludo.domain.movement import MoveDestinationKind
+from ludo.geometry import BoardGeometry
 from ludo.pygame_ui.animation import AnimationEvent, AnimationManager
+from ludo.pygame_ui.gameplay_renderer import GameplayRenderer
 
 
 def route(*indices: int) -> tuple[MoveRouteStepSnapshot, ...]:
@@ -34,6 +36,23 @@ def legal_move(route_steps: tuple[MoveRouteStepSnapshot, ...]) -> LegalMoveSnaps
     )
 
 
+def legal_move_from_progress(
+    path_progress: int, route_steps: tuple[MoveRouteStepSnapshot, ...]
+) -> LegalMoveSnapshot:
+    return LegalMoveSnapshot(
+        piece_id="red-1",
+        owner_color=PlayerColor.RED,
+        state=PieceState.ON_OUTER_PATH,
+        path_progress=path_progress,
+        dice_value=len(route_steps),
+        destination=MoveDestinationSnapshot(
+            MoveDestinationKind.OUTER_PATH,
+            global_outer_index=route_steps[-1].global_outer_index,
+        ),
+        route=route_steps,
+    )
+
+
 def piece(piece_id: str, color: PlayerColor) -> PieceSnapshot:
     return PieceSnapshot(piece_id, color, PieceState.ON_OUTER_PATH, 0)
 
@@ -49,6 +68,44 @@ def test_movement_animation_receives_correct_route_and_progresses() -> None:
     assert manager.move.route == move.route
     assert manager.move.elapsed_ms == 150
     assert manager.input_locked
+
+
+def test_corner_animation_uses_source_square_without_extra_route_step() -> None:
+    geometry = BoardGeometry()
+    renderer = GameplayRenderer(geometry)
+    manager = AnimationManager(AnimationSettings(movement_step_ms=100))
+    move = legal_move_from_progress(4, route(5))
+
+    manager.start_move(move, moved_piece=piece("red-1", PlayerColor.RED))
+
+    assert manager.move is not None
+    assert len(manager.move.route) == 1
+    assert manager.move.source == MoveRouteStepSnapshot(
+        MoveDestinationKind.OUTER_PATH,
+        global_outer_index=4,
+    )
+    assert (
+        renderer._animated_route_center(
+            manager.move.route,
+            manager.move.source,
+            0,
+            manager.settings.movement_step_ms,
+        )
+        == geometry.outer_square(4).center
+    )
+
+    halfway = renderer._animated_route_center(
+        manager.move.route,
+        manager.move.source,
+        50,
+        manager.settings.movement_step_ms,
+    )
+    expected_halfway = (
+        (geometry.outer_square(4).center[0] + geometry.outer_square(5).center[0]) // 2,
+        (geometry.outer_square(4).center[1] + geometry.outer_square(5).center[1]) // 2,
+    )
+
+    assert halfway == expected_halfway
 
 
 def test_completion_is_reported_once() -> None:

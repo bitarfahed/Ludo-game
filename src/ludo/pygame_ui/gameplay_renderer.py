@@ -229,6 +229,7 @@ class GameplayRenderer:
         if animation.move is not None and animation.move.route:
             center = self._animated_route_center(
                 animation.move.route,
+                animation.move.source,
                 animation.move.elapsed_ms,
                 animation.settings.movement_step_ms,
             )
@@ -257,11 +258,18 @@ class GameplayRenderer:
     def _animated_route_center(
         self,
         route: tuple,
+        source,
         elapsed_ms: int,
         step_duration_ms: int,
     ) -> tuple[int, int]:
-        index = min(len(route) - 1, elapsed_ms // max(1, step_duration_ms))
-        return self._route_step_center(route[index])
+        step_duration = max(1, step_duration_ms)
+        index = min(len(route) - 1, elapsed_ms // step_duration)
+        if source is None and index == 0:
+            return self._route_step_center(route[0])
+        start = self._route_step_center(source if index == 0 else route[index - 1])
+        end = self._route_step_center(route[index])
+        fraction = min(1.0, (elapsed_ms % step_duration) / step_duration)
+        return _lerp_point(start, end, fraction)
 
     def _route_step_center(self, step) -> tuple[int, int]:
         if step.kind is MoveDestinationKind.OUTER_PATH and step.global_outer_index is not None:

@@ -1393,6 +1393,94 @@ Lessons learned:
 - Keeping timeout/no-legal progression in the UI update loop still preserves the rule boundary when
   every transition is routed through existing facade commands.
 
+## Bugfix — Audit Visual Step Count at Board Corners
+
+Prompt ID: Bugfix
+
+Title: Audit Visual Step Count at Board Corners
+
+Goal: Verify and correct the full path from piece-relative progress through global outer index,
+board-grid coordinates, facade animation route, and Pygame movement rendering so every legal outer
+move visually corresponds to exactly the dice value.
+
+Context: A manual playtest found that pieces sometimes appeared to move one extra visible square,
+especially around 2D board corners. The authoritative domain path is 1D, while the board renderer
+maps it onto a 15x15 grid.
+
+Full prompt or faithful prompt record: The bugfix prompt was provided directly in chat. Its
+authoritative requirements included:
+
+- inspect only the relevant board, movement, geometry, facade route, animation, and test code;
+- audit all four corner transitions in `OUTER_GRID_PATH`;
+- determine whether the defect was domain movement, animation route generation, grid mapping,
+  corner coordinates, or visual presentation;
+- verify every color, every outer starting progress, and dice values `1..6`;
+- verify route length, route destination, wraparound, and Outer Path to Home Path transitions;
+- preserve approved Ludo rules and avoid unrelated gameplay changes;
+- update this prompts book and `docs/TODO.md` only if appropriate;
+- run `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- manually inspect representative moves crossing each board corner.
+
+Files expected to change:
+
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/pygame_ui/animation.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `tests/integration/test_move_routes.py`
+- `tests/unit/geometry/test_board_geometry.py`
+- `tests/unit/pygame_ui/test_animation.py`
+
+Constraints:
+
+- Do not change approved domain movement rules.
+- Do not alter dice probabilities, capture/block rules, bonus rules, Triple Six, timers, ranking,
+  audio, or unrelated UI design.
+- Do not compensate for rendering by changing domain progress.
+- Do not add extra animation points, count the starting square as a moved step, or duplicate final
+  destinations.
+
+Verification performed:
+
+- Added exhaustive route regression tests for all colors, all 52 outer progresses, and dice values
+  `1..6`.
+- Added explicit tests for all four diagonal corner transitions.
+- Added wraparound and Outer Path to Home Path route tests.
+- Added `OUTER_GRID_PATH` topology tests for 52 unique ordered positions.
+- Added animation rendering regression coverage for using the current source square as the visual
+  start of a one-step corner move.
+- Ran `uv run pytest`.
+- Ran `uv run pytest --cov`.
+- Ran `uv run ruff check .`.
+- Manually inspected representative rendered corner animations.
+
+Result summary:
+
+- Domain movement and facade route counts were correct.
+- `OUTER_GRID_PATH` intentionally contains four diagonal one-step corner transitions to preserve
+  the 52-square topology on the 15x15 board.
+- The misleading visual behavior came from rendering movement at route centers without retaining
+  the piece's source square for interpolation.
+- Movement animation now records a presentation-only source step and interpolates continuously from
+  source to each authoritative route step, producing one visible progression per logical route
+  step.
+
+Issues discovered:
+
+- No off-by-one domain movement bug was found.
+- No duplicated or skipped outer-grid coordinate was found.
+- The diagonal corner transitions are valid logical single steps, but they needed smoother visual
+  presentation.
+
+Follow-up/refinement:
+
+- Future animation polish can tune easing or duration, but route step counts should remain tied to
+  facade-provided route snapshots.
+
+Lessons learned:
+
+- A 1D-to-2D path can be logically correct while still feeling wrong if the animation omits the
+  source position and jumps directly between destination route points.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

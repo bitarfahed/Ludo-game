@@ -7,7 +7,8 @@ from enum import StrEnum
 
 from ludo.app import LegalMoveSnapshot, MoveRouteStepSnapshot, PieceSnapshot
 from ludo.config import DEFAULT_ANIMATION_SETTINGS, AnimationSettings
-from ludo.domain import PlayerColor
+from ludo.domain import BoardTopology, PieceState, PlayerColor
+from ludo.domain.movement import MoveDestinationKind
 
 
 class AnimationEvent(StrEnum):
@@ -26,6 +27,7 @@ class AnimatedPiece:
     piece_id: str
     symbol: str
     color_value: str
+    source: MoveRouteStepSnapshot | None
     route: tuple[MoveRouteStepSnapshot, ...]
     elapsed_ms: int = 0
 
@@ -99,6 +101,7 @@ class AnimationManager:
             piece_id=move.piece_id,
             symbol=moved_piece.owner_color.piece_symbol,
             color_value=moved_piece.owner_color.value,
+            source=_source_step(move),
             route=move.route,
         )
         if captured_piece is not None and move.route:
@@ -156,6 +159,7 @@ class AnimationManager:
             self.move.piece_id,
             self.move.symbol,
             self.move.color_value,
+            self.move.source,
             self.move.route,
             elapsed,
         )
@@ -185,3 +189,20 @@ class AnimationManager:
             self.finish_piece_id = None
             self.finish_color = None
             self.finish_elapsed_ms = 0
+
+
+def _source_step(move: LegalMoveSnapshot) -> MoveRouteStepSnapshot | None:
+    if move.state is PieceState.ON_OUTER_PATH and move.path_progress is not None:
+        return MoveRouteStepSnapshot(
+            kind=MoveDestinationKind.OUTER_PATH,
+            global_outer_index=BoardTopology().global_outer_index(
+                move.owner_color, move.path_progress
+            ),
+        )
+    if move.state is PieceState.ON_HOME_PATH and move.path_progress is not None:
+        return MoveRouteStepSnapshot(
+            kind=MoveDestinationKind.HOME_PATH,
+            home_color=move.owner_color,
+            home_index=move.path_progress,
+        )
+    return None

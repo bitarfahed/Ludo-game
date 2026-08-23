@@ -3,6 +3,14 @@
 from ludo.domain import BoardTopology, PlayerColor
 from ludo.domain.board import HOME_PATH_LENGTH, OUTER_PATH_LENGTH
 from ludo.geometry import BoardGeometry, BoardHitKind
+from ludo.geometry.grid import OUTER_GRID_PATH
+
+CORNER_TRANSITIONS = {
+    4: ((5, 6), (6, 5)),
+    17: ((8, 5), (9, 6)),
+    30: ((9, 8), (8, 9)),
+    43: ((6, 9), (5, 8)),
+}
 
 
 def test_generates_52_distinct_outer_positions() -> None:
@@ -11,6 +19,25 @@ def test_generates_52_distinct_outer_positions() -> None:
     assert len(geometry.outer_squares) == OUTER_PATH_LENGTH
     assert set(geometry.outer_squares) == set(range(OUTER_PATH_LENGTH))
     assert len({rect.center for rect in geometry.outer_squares.values()}) == OUTER_PATH_LENGTH
+
+
+def test_outer_grid_path_has_unique_ordered_52_square_topology() -> None:
+    assert len(OUTER_GRID_PATH) == OUTER_PATH_LENGTH
+    assert len(set(OUTER_GRID_PATH)) == OUTER_PATH_LENGTH
+    for start, end in zip(
+        OUTER_GRID_PATH,
+        (*OUTER_GRID_PATH[1:], OUTER_GRID_PATH[0]),
+        strict=True,
+    ):
+        column_delta = abs(end[0] - start[0])
+        row_delta = abs(end[1] - start[1])
+        assert max(column_delta, row_delta) == 1
+        assert column_delta + row_delta in {1, 2}
+
+
+def test_outer_grid_path_corner_transitions_are_intentional_single_steps() -> None:
+    for start_index, transition in CORNER_TRANSITIONS.items():
+        assert OUTER_GRID_PATH[start_index : start_index + 2] == transition
 
 
 def test_generates_five_home_path_positions_per_color() -> None:
