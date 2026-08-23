@@ -458,6 +458,55 @@ def test_hazard_penalty_does_not_chain_to_second_hazard() -> None:
     assert event.moved_piece.path_progress == 1
 
 
+def test_hazard_penalty_does_not_chain_to_boost_or_shield_square() -> None:
+    turn_engine = engine(rolls=[3], hazards=frozenset({3}))
+    turn_engine.boost_positions = frozenset({1})
+    turn_engine.shield_square_positions = frozenset({1})
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.hazard_triggered
+    assert not event.boost_triggered
+    assert not event.shield_acquired
+    assert event.moved_piece.path_progress == 1
+    assert not event.moved_piece.has_shield
+
+
+def test_hazard_penalty_cannot_capture_same_player_piece() -> None:
+    moving = outer_piece("red-1", PlayerColor.RED, 0)
+    friendly = outer_piece("red-2", PlayerColor.RED, 1)
+    red = player(
+        "red",
+        PlayerColor.RED,
+        (
+            moving,
+            friendly,
+            Piece("red-finished-1", PlayerColor.RED, PieceState.FINISHED),
+            Piece("red-finished-2", PlayerColor.RED, PieceState.FINISHED),
+        ),
+    )
+    turn_engine = TurnEngine(
+        players=(red, player("blue", PlayerColor.BLUE)),
+        dice=FixedDice([3]),
+        special_die=FixedSpecialDie([0] * 20),
+        clock=FixedClock(),
+        hazard_positions=frozenset({3}),
+    )
+    turn_engine.set_occupancy(OuterPathOccupancy(1, (friendly,)))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert not event.collision_outcome.capture_occurred
+    assert event.collision_outcome.destination_protected
+    assert event.collision_outcome.destination_occupancy is not None
+    assert {piece.id for piece in event.collision_outcome.destination_occupancy.pieces} == {
+        "red-1",
+        "red-2",
+    }
+
+
 def test_boost_direct_landing_moves_piece_two_outer_steps_forward() -> None:
     turn_engine = engine(rolls=[3])
     turn_engine.boost_positions = frozenset({3})
@@ -511,6 +560,41 @@ def test_boost_forced_destination_can_capture_and_grant_bonus() -> None:
     assert event.boost_triggered
     assert event.collision_outcome.capture_occurred
     assert event.bonus_reasons == frozenset({"capture"})
+
+
+def test_boost_forced_destination_cannot_capture_same_player_piece() -> None:
+    moving = outer_piece("red-1", PlayerColor.RED, 0)
+    friendly = outer_piece("red-2", PlayerColor.RED, 5)
+    red = player(
+        "red",
+        PlayerColor.RED,
+        (
+            moving,
+            friendly,
+            Piece("red-finished-1", PlayerColor.RED, PieceState.FINISHED),
+            Piece("red-finished-2", PlayerColor.RED, PieceState.FINISHED),
+        ),
+    )
+    turn_engine = TurnEngine(
+        players=(red, player("blue", PlayerColor.BLUE)),
+        dice=FixedDice([3]),
+        special_die=FixedSpecialDie([0] * 20),
+        clock=FixedClock(),
+        boost_positions=frozenset({3}),
+    )
+    turn_engine.set_occupancy(OuterPathOccupancy(5, (friendly,)))
+
+    roll_special_to_move(turn_engine)
+    event = turn_engine.select_piece("red-1")
+
+    assert event.boost_triggered
+    assert not event.collision_outcome.capture_occurred
+    assert event.collision_outcome.destination_protected
+    assert event.collision_outcome.destination_occupancy is not None
+    assert {piece.id for piece in event.collision_outcome.destination_occupancy.pieces} == {
+        "red-1",
+        "red-2",
+    }
 
 
 def test_boost_forced_destination_does_not_chain_other_special_squares() -> None:

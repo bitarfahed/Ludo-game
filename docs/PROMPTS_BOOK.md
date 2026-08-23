@@ -2104,6 +2104,78 @@ Lessons learned:
   counts and feature scopes are useful history but should not leak into the authoritative product
   docs.
 
+## Final QA & Portfolio Polish
+
+Prompt ID: Final QA Portfolio Polish
+
+Title: Final Repository QA And Portfolio Readiness Pass
+
+Goal: Perform a repository-wide QA, cleanup, and portfolio-readiness pass for the completed playable
+Ludo game without adding new gameplay features.
+
+Context: The game already included the complete local Human vs Human Pygame flow, current
+documentation, special-square systems, two-dice flow, forced Yard release, Backward Capture,
+animations, audio, and route/interaction regressions from earlier prompts.
+
+Full prompt or faithful prompt record: The final-QA prompt was provided as an attached pasted text
+file. Its authoritative requirements included:
+
+- audit game setup, turn flow, dice flow, movement, board effects, capture, bonus rolls, Home Path,
+  finish, ranking, and completion;
+- verify player setup, color assignment, inactive colors, name validation, and initial state;
+- audit base-die-only rules, forced-six Yard anti-stall, board topology, movement routes, legal
+  destination `V` markers, capture/occupancy, Backward Capture, Hazards, Boosts, Shields,
+  special-effect chain prevention, timers, bonus rolls, ranking, rendering, animation, audio,
+  architecture, code quality, tests, docs, and repository hygiene;
+- make only small safe fixes or tests where justified;
+- do not add new gameplay features, rebalance probabilities, change counts/timers/topology, or
+  redesign the UI;
+- append this task to the prompts book;
+- run `uv sync`, `uv run ruff check .`, `uv run pytest`, and `uv run pytest --cov`;
+- verify the documented launch command with a smoke launch;
+- clearly distinguish automated verification from manual verification.
+
+Files expected to change:
+
+- `docs/PROMPTS_BOOK.md`
+- focused tests if QA reveals meaningful regression gaps
+- current-state docs only if verification counts or small discovered facts change
+
+Constraints:
+
+- Do not implement Portal, Double-or-Nothing, Coins/Shop, Time Crystal, Split Dice, Bot/AI, or
+  networking.
+- Do not perform a large architecture rewrite.
+- Do not claim complete manual gameplay verification unless actually performed.
+
+Verification performed:
+
+- Audited current implementation, tests, docs, package metadata, tracked files, ignored artifacts,
+  and repository structure.
+- Added focused regression coverage for same-player non-capture on Hazard and Boost forced
+  destinations.
+- Added focused regression coverage that Hazard forced displacement onto Boost/Shield squares does
+  not chain.
+- Cleaned removable ignored runtime artifacts while leaving ignored local `.venv` and `.idea`
+  directories untouched.
+- Ran `uv sync`: passed.
+- Ran `uv run ruff check .`: all checks passed.
+- Ran `uv run pytest`: 1556 passed.
+- Ran `uv run pytest --cov`: 86.63% total coverage, above the configured 85% threshold.
+- Ran `uv run python -m ludo.pygame_ui.main --smoke`: passed.
+
+Result summary:
+
+- No gameplay code changes were made.
+- QA found no safe, small production-code defect requiring a rule fix.
+- Additional tests strengthen final portfolio confidence around forced movement, self-capture
+  prevention, and special-effect chain prevention.
+
+Lessons learned:
+
+- A final QA pass is most useful when it adds narrow guardrails around cross-system invariants
+  rather than polishing working code for its own sake.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

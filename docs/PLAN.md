@@ -334,7 +334,7 @@ line-length = 100
 
 Current baseline verification:
 
-- `uv run pytest`: 1553 tests passed.
+- `uv run pytest`: 1556 tests passed.
 - `uv run pytest --cov`: 86.63% coverage, above the configured 85% threshold.
 - `uv run ruff check .`: passing.
 

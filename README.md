@@ -122,7 +122,7 @@ uv run ruff check .
 
 Current verification from this documentation update:
 
-- `uv run pytest`: 1553 tests passed.
+- `uv run pytest`: 1556 tests passed.
 - `uv run pytest --cov`: 86.63% total coverage.
 - Configured coverage threshold: 85%.
 - `uv run ruff check .`: all checks passed.
