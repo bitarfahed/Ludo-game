@@ -4,7 +4,17 @@ from dataclasses import replace
 
 import pytest
 
-from ludo.domain import FixedClock, FixedDice, Match, Piece, PieceState, PlayerColor, TurnPhase
+from ludo.domain import (
+    FixedClock,
+    FixedDice,
+    FixedHazardRandomizer,
+    FixedSpecialDie,
+    Match,
+    Piece,
+    PieceState,
+    PlayerColor,
+    TurnPhase,
+)
 from ludo.domain.match import FixedColorRandomizer
 
 
@@ -23,7 +33,9 @@ def create_match(player_count: int, assigned_colors: tuple[PlayerColor, ...]) ->
     return Match.create(
         player_names=tuple(f"P{index}" for index in range(1, player_count + 1)),
         color_randomizer=FixedColorRandomizer(choices=choices, samples=[assigned_colors]),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice([1, 1, 1, 1]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
 
@@ -35,7 +47,9 @@ def test_valid_two_player_setup_uses_opposite_colors_and_clockwise_order() -> No
             choices=[(PlayerColor.GREEN, PlayerColor.BLUE)],
             samples=[(PlayerColor.BLUE, PlayerColor.GREEN)],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice([1]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
 
@@ -82,6 +96,8 @@ def test_two_player_colors_are_always_opposite() -> None:
             choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
             samples=[(PlayerColor.YELLOW, PlayerColor.RED)],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
+        special_die=FixedSpecialDie([0] * 20),
     )
 
     assert {player.color for player in match.players} == {PlayerColor.RED, PlayerColor.YELLOW}

@@ -7,8 +7,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ludo.domain.board import BoardTopology
+from ludo.domain.board import OUTER_PATH_LENGTH, BoardTopology
 from ludo.domain.colors import PlayerColor
+from ludo.domain.hazards import HazardRandomizer, backward_global_index
 from ludo.domain.match import ColorRandomizer, Match
 from ludo.domain.movement import MoveDestination, MoveDestinationKind
 from ludo.domain.pieces import Piece, PieceState
@@ -17,6 +18,8 @@ from ludo.domain.turns import (
     DECISION_TIMEOUT_SECONDS,
     Clock,
     Dice,
+    MoveActionKind,
+    SpecialDie,
     TurnEvent,
     TurnEventKind,
     TurnPhase,
@@ -103,6 +106,9 @@ class LegalMoveSnapshot:
     dice_value: int
     destination: MoveDestinationSnapshot
     route: tuple[MoveRouteStepSnapshot, ...]
+    action_id: str = ""
+    action_kind: MoveActionKind = MoveActionKind.FORWARD
+    movement_value: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +136,10 @@ class GameSnapshot:
     outer_occupancies: tuple[OuterOccupancySnapshot, ...]
     rankings: tuple[RankingSnapshot, ...]
     is_complete: bool
+    current_special_bonus: int = 0
+    special_bonus_applied: bool = False
+    approved_movement_value: int | None = None
+    hazard_positions: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +149,9 @@ class FacadeResult:
     kind: FacadeResultKind
     snapshot: GameSnapshot
     dice_value: int | None = None
+    special_bonus: int = 0
+    approved_movement_value: int | None = None
+    special_bonus_applied: bool = False
     legal_moves: tuple[LegalMoveSnapshot, ...] = ()
     moved_piece: PieceSnapshot | None = None
     captured_piece: PieceSnapshot | None = None
@@ -147,6 +160,10 @@ class FacadeResult:
     turn_changed: bool = False
     ranked_players: tuple[RankingSnapshot, ...] = ()
     match_completed: bool = False
+    action_kind: MoveActionKind | None = None
+    hazard_triggered: bool = False
+    hazard_from: int | None = None
+    hazard_to: int | None = None
 
     @property
     def capture_occurred(self) -> bool:
@@ -201,7 +218,10 @@ class GameFacade:
         player_names: Sequence[str],
         *,
         color_randomizer: ColorRandomizer | None = None,
+        hazard_randomizer: HazardRandomizer | None = None,
+        hazard_positions: frozenset[int] | None = None,
         dice: Dice | None = None,
+        special_die: SpecialDie | None = None,
         clock: Clock | None = None,
     ) -> FacadeResult:
         """Create a new match and return its first public snapshot."""
@@ -209,7 +229,10 @@ class GameFacade:
         self._match = Match.create(
             tuple(player_names),
             color_randomizer=color_randomizer,
+            hazard_randomizer=hazard_randomizer,
+            hazard_positions=hazard_positions,
             dice=dice,
+            special_die=special_die,
             clock=clock or self._pausable_clock,
         )
         snapshot = self.snapshot()
@@ -247,8 +270,16 @@ class GameFacade:
             seconds_remaining=0 if match.is_complete else match.turn_engine.seconds_remaining,
             decision_timeout_seconds=0 if match.is_complete else DECISION_TIMEOUT_SECONDS,
             current_dice_value=None if match.is_complete else match.turn_engine.last_roll,
+            current_special_bonus=0 if match.is_complete else match.turn_engine.last_special_bonus,
+            special_bonus_applied=(
+                False if match.is_complete else match.turn_engine.special_bonus_applied
+            ),
+            approved_movement_value=(
+                None if match.is_complete else match.turn_engine.approved_movement_value
+            ),
             legal_moves=self.legal_moves(),
             outer_occupancies=_outer_occupancy_snapshots(match),
+            hazard_positions=match.turn_engine.hazard_positions,
             rankings=rankings,
             is_complete=match.is_complete,
         )
@@ -277,20 +308,14 @@ class GameFacade:
             return ()
         if match.turn_engine.last_roll is None:
             return ()
-        piece_by_id = {piece.id: piece for piece in match.turn_engine.current_player.pieces}
-        legal_moves = []
-        for piece_id in match.turn_engine.legal_piece_ids:
-            piece = piece_by_id.get(piece_id)
-            if piece is None:
-                continue
-            proposal = match.turn_engine.movement_rules.propose_move(
-                piece, match.turn_engine.last_roll
+        return tuple(
+            _legal_move_snapshot(
+                action,
+                base_roll=match.turn_engine.last_roll,
+                hazard_positions=match.turn_engine.hazard_positions,
             )
-            if proposal is not None:
-                legal_moves.append(
-                    _legal_move_snapshot(piece, match.turn_engine.last_roll, proposal.destination)
-                )
-        return tuple(legal_moves)
+            for action in match.turn_engine.legal_actions
+        )
 
     def rankings(self) -> tuple[RankingSnapshot, ...]:
         """Return standings in rank order."""
@@ -327,13 +352,13 @@ class GameFacade:
             raise GameFacadeError(str(exc)) from exc
         return self._result_from_event(event, before_player_id)
 
-    def choose_piece(self, piece_id: str) -> FacadeResult:
+    def choose_piece(self, piece_id: str, action_id: str | None = None) -> FacadeResult:
         """Resolve a selected legal piece."""
         match = self._require_active_match()
         before_player_id = self._current_player_id(match)
         before_rank_count = len(match.rankings)
         try:
-            event = match.turn_engine.select_piece(piece_id)
+            event = match.turn_engine.select_piece(piece_id, action_id)
         except ValueError as exc:
             raise GameFacadeError(str(exc)) from exc
         match.evaluate_rankings()
@@ -378,6 +403,9 @@ class GameFacade:
             kind=_result_kind(event.kind),
             snapshot=snapshot,
             dice_value=event.dice_value,
+            special_bonus=event.special_bonus,
+            approved_movement_value=event.approved_movement_value,
+            special_bonus_applied=event.special_bonus_applied,
             legal_moves=snapshot.legal_moves,
             moved_piece=moved_piece,
             captured_piece=captured_piece,
@@ -386,6 +414,10 @@ class GameFacade:
             turn_changed=before_player_id != self._current_player_id(match),
             ranked_players=ranked_players,
             match_completed=match.is_complete,
+            action_kind=event.action_kind,
+            hazard_triggered=event.hazard_triggered,
+            hazard_from=event.hazard_from,
+            hazard_to=event.hazard_to,
         )
 
     def _require_match(self) -> Match:
@@ -444,20 +476,43 @@ def _outer_occupancy_snapshots(match: Match) -> tuple[OuterOccupancySnapshot, ..
 
 
 def _legal_move_snapshot(
-    piece: Piece, dice_value: int, destination: MoveDestination
+    action, *, base_roll: int, hazard_positions: frozenset[int]
 ) -> LegalMoveSnapshot:
+    piece = action.proposal.original_piece
     return LegalMoveSnapshot(
+        action_id=action.action_id,
         piece_id=piece.id,
         owner_color=piece.owner_color,
+        action_kind=action.kind,
         state=piece.state,
         path_progress=piece.path_progress,
-        dice_value=dice_value,
-        destination=_destination_snapshot(destination),
-        route=_route_snapshot(piece, dice_value),
+        dice_value=base_roll,
+        movement_value=action.movement_value,
+        destination=_destination_snapshot(action.proposal.destination),
+        route=_route_snapshot(
+            piece,
+            action.movement_value,
+            action_kind=action.kind,
+            hazard_positions=hazard_positions,
+        ),
     )
 
 
-def _route_snapshot(piece: Piece, dice_value: int) -> tuple[MoveRouteStepSnapshot, ...]:
+def _route_snapshot(
+    piece: Piece,
+    dice_value: int,
+    *,
+    action_kind: MoveActionKind = MoveActionKind.FORWARD,
+    hazard_positions: frozenset[int] = frozenset(),
+) -> tuple[MoveRouteStepSnapshot, ...]:
+    if action_kind is MoveActionKind.BACKWARD_CAPTURE:
+        if piece.path_progress is None:
+            msg = "Backward route requires path progress."
+            raise ValueError(msg)
+        return tuple(
+            _outer_route_step(piece.owner_color, piece.path_progress - step)
+            for step in range(1, dice_value + 1)
+        )
     if piece.state is PieceState.IN_YARD:
         return (
             MoveRouteStepSnapshot(
@@ -469,10 +524,28 @@ def _route_snapshot(piece: Piece, dice_value: int) -> tuple[MoveRouteStepSnapsho
         if piece.path_progress is None:
             msg = "Outer-path route requires path progress."
             raise ValueError(msg)
-        return tuple(
+        route = tuple(
             _outer_route_step(piece.owner_color, piece.path_progress + step)
             for step in range(1, dice_value + 1)
         )
+        final = route[-1] if route else None
+        if (
+            final is not None
+            and final.global_outer_index is not None
+            and final.global_outer_index in hazard_positions
+        ):
+            first_penalty = backward_global_index(final.global_outer_index, 1)
+            second_penalty = backward_global_index(final.global_outer_index, 2)
+            return (
+                *route,
+                MoveRouteStepSnapshot(
+                    MoveDestinationKind.OUTER_PATH, global_outer_index=first_penalty
+                ),
+                MoveRouteStepSnapshot(
+                    MoveDestinationKind.OUTER_PATH, global_outer_index=second_penalty
+                ),
+            )
+        return route
     if piece.state is PieceState.ON_HOME_PATH:
         if piece.path_progress is None:
             msg = "Home-Path route requires path progress."
@@ -489,7 +562,9 @@ def _outer_route_step(color: PlayerColor, journey_progress: int) -> MoveRouteSte
     if journey_progress < 52:
         return MoveRouteStepSnapshot(
             kind=MoveDestinationKind.OUTER_PATH,
-            global_outer_index=topology.global_outer_index(color, journey_progress),
+            global_outer_index=topology.global_outer_index(
+                color, journey_progress % OUTER_PATH_LENGTH
+            ),
         )
     if journey_progress < 57:
         return MoveRouteStepSnapshot(

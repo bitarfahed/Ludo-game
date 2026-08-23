@@ -7,7 +7,9 @@ from dataclasses import dataclass, field
 from random import Random
 from typing import Protocol, TypeVar
 
+from ludo.domain.bonus_die import RandomSpecialDie, SpecialDie
 from ludo.domain.colors import PlayerColor
+from ludo.domain.hazards import HazardRandomizer, generate_hazards
 from ludo.domain.pieces import PieceState
 from ludo.domain.players import Player
 from ludo.domain.turns import Clock, Dice, FixedClock, RandomDice, TurnEngine
@@ -106,7 +108,10 @@ class Match:
         cls,
         player_names: tuple[str, ...],
         color_randomizer: ColorRandomizer | None = None,
+        hazard_randomizer: HazardRandomizer | None = None,
+        hazard_positions: frozenset[int] | None = None,
         dice: Dice | None = None,
+        special_die: SpecialDie | None = None,
         clock: Clock | None = None,
     ) -> Match:
         """Create a validated match with random color assignment."""
@@ -131,6 +136,12 @@ class Match:
             players=ordered_players,
             dice=dice or RandomDice(),
             clock=clock or FixedClock(),
+            special_die=special_die or RandomSpecialDie(),
+            hazard_positions=(
+                generate_hazards(hazard_randomizer)
+                if hazard_positions is None
+                else hazard_positions
+            ),
         )
         return cls(ordered_players, engine, inactive_colors)
 

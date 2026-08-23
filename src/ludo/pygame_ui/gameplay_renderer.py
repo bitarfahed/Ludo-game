@@ -131,7 +131,12 @@ class GameplayRenderer:
         label_font = font if dice.current_value is not None or rolling else small_font
         label = label_font.render(label_text, True, theme.TEXT)
         surface.blit(label, label.get_rect(center=(rect.centerx, rect.centery - 3)))
-        if rolling:
+        if not rolling and dice.current_value is not None and dice.special_bonus:
+            bonus_text = "+2" if dice.special_bonus_applied else "+2 off"
+            movement = dice.movement_value or dice.current_value
+            hint = small_font.render(f"{bonus_text} = {movement}", True, dice.accent_color)
+            surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
+        elif rolling:
             hint = small_font.render("...", True, dice.accent_color)
             surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
         elif dice.roll_available:

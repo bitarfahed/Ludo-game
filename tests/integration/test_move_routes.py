@@ -9,6 +9,7 @@ from ludo.domain import (
     BoardTopology,
     FixedClock,
     FixedDice,
+    FixedSpecialDie,
     Match,
     MovementRules,
     Piece,
@@ -110,7 +111,9 @@ def _match_for(piece: Piece, dice_value: int) -> Match:
     match = Match.create(
         tuple(color.value.title() for color in ALL_COLORS),
         color_randomizer=FixedColorRandomizer(samples=[ALL_COLORS]),
+        hazard_positions=frozenset(),
         dice=FixedDice([dice_value]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
     player = match.player_by_color(piece.owner_color)

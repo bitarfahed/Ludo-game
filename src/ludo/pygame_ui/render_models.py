@@ -92,6 +92,9 @@ class DiceHudState:
 
     bounds: ScreenRect
     current_value: int | None
+    special_bonus: int
+    special_bonus_applied: bool
+    movement_value: int | None
     roll_available: bool
     accent_color: tuple[int, int, int]
 

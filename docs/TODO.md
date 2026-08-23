@@ -102,4 +102,12 @@ Default owner: Developer / Codex-assisted.
 | Add third-party attribution | Planned | Medium | Developer / Codex-assisted | Dependencies/assets | Dependency and asset credits are documented. |
 | Tag meaningful release | Planned | Medium | Developer / Codex-assisted | Final QA | Version tag matches the authoritative application version. |
 
+## Gameplay Expansion: Bonus Die, Hazards, and Backward Capture
+
+| Task | Status | Priority | Owner | Dependencies | Definition of Done |
+| --- | --- | --- | --- | --- | --- |
+| Implement Special Bonus Die | Complete | High | Developer / Codex-assisted | Turn engine and facade | Base roll, special bonus, effective movement, fallback, and Triple-Six interactions are tested. |
+| Implement Hazard Squares | Complete | High | Developer / Codex-assisted | Board topology and collision rules | Four fixed match hazards, two-step penalty, collision after penalty, and facade exposure are tested. |
+| Implement Backward Capture | Complete | High | Developer / Codex-assisted | Occupancy/capture rules | Capture-only backward actions, action disambiguation, and capture bonus behavior are tested. |
+
 Remaining planned work is release/documentation polish, not core gameplay implementation.

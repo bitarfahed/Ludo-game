@@ -10,6 +10,7 @@ from ludo.domain.players import Player
 
 MIN_DICE_VALUE = 1
 MAX_DICE_VALUE = 6
+MAX_MOVEMENT_VALUE = 8
 OUTER_COMPLETION_PROGRESS = 52
 FINISHED_JOURNEY_PROGRESS = 57
 
@@ -91,7 +92,7 @@ class MovementRules:
 
     def propose_move(self, piece: Piece, dice_value: int) -> ProposedMove | None:
         """Calculate a legal movement proposal, or ``None`` when the roll cannot move the piece."""
-        _validate_dice_value(dice_value)
+        _validate_movement_value(dice_value)
 
         match piece.state:
             case PieceState.IN_YARD:
@@ -113,8 +114,21 @@ class MovementRules:
 
     def legal_pieces(self, player: Player, dice_value: int) -> tuple[Piece, ...]:
         """Return the player's pieces that can legally use a dice value."""
-        _validate_dice_value(dice_value)
+        _validate_movement_value(dice_value)
         return tuple(piece for piece in player.pieces if self.can_move(piece, dice_value))
+
+    def propose_backward_outer_capture(
+        self, piece: Piece, movement_value: int
+    ) -> ProposedMove | None:
+        """Calculate the backward outer-path destination for capture-only checks."""
+        _validate_movement_value(movement_value)
+        if piece.state is not PieceState.ON_OUTER_PATH:
+            return None
+        if piece.path_progress is None:
+            msg = "Outer-path pieces require path progress."
+            raise ValueError(msg)
+        relative_progress = (piece.path_progress - movement_value) % OUTER_COMPLETION_PROGRESS
+        return self._outer_result(piece, movement_value, relative_progress)
 
     def _propose_yard_exit(self, piece: Piece, dice_value: int) -> ProposedMove | None:
         if dice_value != MAX_DICE_VALUE:
@@ -182,4 +196,10 @@ class MovementRules:
 def _validate_dice_value(dice_value: int) -> None:
     if not MIN_DICE_VALUE <= dice_value <= MAX_DICE_VALUE:
         msg = f"dice value must be between {MIN_DICE_VALUE} and {MAX_DICE_VALUE}."
+        raise DiceValueError(msg)
+
+
+def _validate_movement_value(movement_value: int) -> None:
+    if not MIN_DICE_VALUE <= movement_value <= MAX_MOVEMENT_VALUE:
+        msg = f"movement value must be between {MIN_DICE_VALUE} and {MAX_MOVEMENT_VALUE}."
         raise DiceValueError(msg)

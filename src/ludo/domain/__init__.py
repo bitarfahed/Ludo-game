@@ -1,7 +1,21 @@
 """Public domain models available at the current implementation stage."""
 
 from ludo.domain.board import BoardTopology, FinishedDestination, HomePathPosition
+from ludo.domain.bonus_die import (
+    SPECIAL_BONUS_SUCCESS_PROBABILITY,
+    SPECIAL_BONUS_VALUE,
+    FixedSpecialDie,
+    NoSpecialDie,
+    RandomSpecialDie,
+)
 from ludo.domain.colors import PlayerColor
+from ludo.domain.hazards import (
+    HAZARD_COUNT,
+    HAZARD_PENALTY_STEPS,
+    FixedHazardRandomizer,
+    RandomHazardRandomizer,
+    generate_hazards,
+)
 from ludo.domain.match import Match, RankingEntry
 from ludo.domain.movement import (
     DiceValueError,
@@ -17,6 +31,7 @@ from ludo.domain.turns import (
     DECISION_TIMEOUT_SECONDS,
     FixedClock,
     FixedDice,
+    MoveActionKind,
     RandomDice,
     TurnEngine,
     TurnEvent,
@@ -26,8 +41,12 @@ from ludo.domain.turns import (
 
 __all__ = [
     "DECISION_TIMEOUT_SECONDS",
+    "HAZARD_COUNT",
+    "HAZARD_PENALTY_STEPS",
     "MAX_PLAYER_NAME_LENGTH",
     "PIECES_PER_PLAYER",
+    "SPECIAL_BONUS_SUCCESS_PROBABILITY",
+    "SPECIAL_BONUS_VALUE",
     "BoardTopology",
     "CollisionOutcome",
     "CollisionResolver",
@@ -35,11 +54,15 @@ __all__ = [
     "FinishedDestination",
     "FixedClock",
     "FixedDice",
+    "FixedHazardRandomizer",
+    "FixedSpecialDie",
     "HomePathPosition",
     "Match",
+    "MoveActionKind",
     "MoveDestination",
     "MoveDestinationKind",
     "MovementRules",
+    "NoSpecialDie",
     "OuterPathOccupancy",
     "Piece",
     "PieceState",
@@ -47,9 +70,12 @@ __all__ = [
     "PlayerColor",
     "ProposedMove",
     "RandomDice",
+    "RandomHazardRandomizer",
+    "RandomSpecialDie",
     "RankingEntry",
     "TurnEngine",
     "TurnEvent",
     "TurnEventKind",
     "TurnPhase",
+    "generate_hazards",
 ]

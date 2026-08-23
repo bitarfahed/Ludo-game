@@ -27,7 +27,7 @@ class BoardRenderer:
         """Draw all static board regions."""
         _draw_shadowed_rect(surface, self.geometry.board_rect, theme.SURFACE)
         self._draw_yards(surface, snapshot, font)
-        self._draw_outer_path(surface, font)
+        self._draw_outer_path(surface, snapshot, font)
         self._draw_home_paths(surface)
         self._draw_finish_regions(surface, small_font)
         self._draw_center_dice_area(surface, small_font)
@@ -62,7 +62,9 @@ class BoardRenderer:
             pygame.draw.circle(surface, fill, center, radius)
             pygame.draw.circle(surface, outline, center, radius, width=3)
 
-    def _draw_outer_path(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+    def _draw_outer_path(
+        self, surface: pygame.Surface, snapshot: GameSnapshot, font: pygame.font.Font
+    ) -> None:
         for index, rect in self.geometry.outer_squares.items():
             fill = theme.SURFACE
             if index in self.geometry.topology.start_positions.values():
@@ -75,6 +77,9 @@ class BoardRenderer:
                 marker = "S" if index in self.geometry.topology.start_positions.values() else "*"
                 label = font.render(marker, True, theme.TEXT_MUTED)
                 surface.blit(label, label.get_rect(center=rect.center))
+            if index in snapshot.hazard_positions:
+                label = font.render("!", True, theme.DANGER)
+                surface.blit(label, label.get_rect(center=(rect.center[0], rect.center[1] + 1)))
 
     def _draw_home_paths(self, surface: pygame.Surface) -> None:
         for color in PlayerColor:

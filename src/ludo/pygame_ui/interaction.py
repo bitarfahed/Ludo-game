@@ -48,10 +48,15 @@ class GameplayInteractionController:
             return False
         if snapshot.phase is not None and self.geometry.center_dice_area.contains(position):
             return self._try_roll(controller)
+        destination_move = self._legal_destination_at(position, snapshot)
+        if destination_move is not None:
+            return self._try_choose_piece(
+                controller, destination_move.piece_id, destination_move.action_id
+            )
         piece_id = self._legal_piece_at(position, snapshot)
         if piece_id is None:
             return False
-        return self._try_choose_piece(controller, piece_id)
+        return self._try_choose_piece(controller, piece_id, None)
 
     def handle_hover(self, position: tuple[int, int], controller: ScreenController) -> None:
         """Update legal destination preview for a mouse position."""
@@ -71,8 +76,15 @@ class GameplayInteractionController:
             return
         bounds = self._destination_bounds(legal_move.destination)
         if bounds is not None:
+            hint = (
+                "Backward Capture"
+                if legal_move.action_kind.value == "backward_capture"
+                else f"Forward {legal_move.movement_value}"
+            )
             self.preview = DestinationPreview(
-                piece_id, bounds, f"Move {legal_move.dice_value} spaces"
+                piece_id,
+                bounds,
+                hint,
             )
 
     def _try_roll(self, controller: ScreenController) -> bool:
@@ -93,7 +105,9 @@ class GameplayInteractionController:
         self.latest_result = result
         return True
 
-    def _try_choose_piece(self, controller: ScreenController, piece_id: str) -> bool:
+    def _try_choose_piece(
+        self, controller: ScreenController, piece_id: str, action_id: str | None
+    ) -> bool:
         if controller.facade is None:
             return False
         snapshot = controller.facade.snapshot()
@@ -101,7 +115,7 @@ class GameplayInteractionController:
         if legal_move is None:
             return False
         try:
-            result = controller.facade.choose_piece(piece_id)
+            result = controller.facade.choose_piece(piece_id, action_id)
         except GameFacadeError:
             return False
         if result.moved_piece is not None:
@@ -128,6 +142,15 @@ class GameplayInteractionController:
             for piece in group.pieces:
                 if piece.piece_id in legal_piece_ids:
                     return piece.piece_id
+        return None
+
+    def _legal_destination_at(
+        self, position: tuple[int, int], snapshot
+    ) -> LegalMoveSnapshot | None:
+        for move in snapshot.legal_moves:
+            bounds = self._destination_bounds(move.destination)
+            if bounds is not None and bounds.contains(position):
+                return move
         return None
 
     def pop_result(self) -> FacadeResult | None:

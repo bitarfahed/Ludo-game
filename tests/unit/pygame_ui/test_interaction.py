@@ -3,7 +3,17 @@
 from dataclasses import replace
 
 from ludo.app import GameFacade
-from ludo.domain import FixedClock, FixedDice, Match, Piece, PieceState, PlayerColor, TurnPhase
+from ludo.domain import (
+    FixedClock,
+    FixedDice,
+    FixedHazardRandomizer,
+    FixedSpecialDie,
+    Match,
+    Piece,
+    PieceState,
+    PlayerColor,
+    TurnPhase,
+)
 from ludo.domain.match import FixedColorRandomizer
 from ludo.geometry import BoardGeometry
 from ludo.pygame_ui.animation import AnimationManager
@@ -21,7 +31,9 @@ def started_controller(rolls: list[int]) -> ScreenController:
             choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
             samples=[(PlayerColor.RED, PlayerColor.YELLOW)],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice(rolls),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
     return controller
@@ -78,7 +90,7 @@ def test_legal_piece_hover_exposes_destination_preview() -> None:
     assert interaction.preview is not None
     assert interaction.preview.piece_id == "player-1-piece-1"
     assert interaction.preview.bounds == geometry.outer_square(0)
-    assert interaction.preview.hint == "Move 6 spaces"
+    assert interaction.preview.hint == "Forward 6"
 
 
 def test_legal_piece_click_submits_move_and_updates_ui_state() -> None:
@@ -167,7 +179,9 @@ def controller_with_one_legal_outer_piece() -> ScreenController:
             choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
             samples=[(PlayerColor.RED, PlayerColor.YELLOW)],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice([3]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
     red = match.player_by_color(PlayerColor.RED)

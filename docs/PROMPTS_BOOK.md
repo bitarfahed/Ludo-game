@@ -1561,6 +1561,106 @@ Lessons learned:
 - Current-state documents and historical prompt records serve different purposes; only the former
   should be rewritten as the implementation evolves.
 
+## Gameplay Expansion — Bonus Die, Hazards & Backward Capture
+
+Prompt ID: Gameplay Expansion
+
+Title: Bonus Die, Hazards & Backward Capture
+
+Goal: Implement three approved gameplay extensions on top of the existing Ludo game: Special Bonus
+Die, Hazard Squares, and Backward Capture.
+
+Context: The current game already had a tested domain engine, facade boundary, board geometry,
+Pygame rendering/interaction, animations, audio, timers, ranking, and final results. This milestone
+extends gameplay while preserving the existing architecture direction:
+
+```text
+Pygame UI -> GameFacade -> domain/services
+```
+
+Full prompt or faithful prompt record: The expansion prompt was provided as an attached pasted text
+file. Its authoritative requirements included:
+
+- add a configurable/injectable binary special die with 80% no effect and 20% `+2`;
+- keep `base_roll`, `special_bonus`, and `effective_move` distinct;
+- make Triple Six and six-based bonus rolls depend only on the base roll;
+- discard `+2` only when no effective-value legal action exists and a base-value legal action does;
+- add exactly four fixed match Hazard Squares, one per sector, never overlapping safe/start squares;
+- apply a two-step backward hazard penalty only on direct destination landing;
+- resolve collision normally after hazard penalty and prevent hazard chains;
+- add backward capture only when moving backward by the approved movement value immediately captures
+  a vulnerable opponent;
+- expose direction/action information through facade snapshots;
+- update UI/facade/rendering without duplicating rules in Pygame;
+- update only `docs/TODO.md` and this prompts book during the implementation prompt;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- launch the game manually where practical without fabricating manual cases.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/facade.py`
+- `src/ludo/audio/service.py`
+- `src/ludo/domain/__init__.py`
+- `src/ludo/domain/bonus_die.py`
+- `src/ludo/domain/hazards.py`
+- `src/ludo/domain/match.py`
+- `src/ludo/domain/movement.py`
+- `src/ludo/domain/turns.py`
+- `src/ludo/pygame_ui/board_renderer.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/interaction.py`
+- `src/ludo/pygame_ui/render_models.py`
+- `src/ludo/pygame_ui/render_state.py`
+- affected tests under `tests/`
+
+Constraints:
+
+- Do not implement Time Crystal/Undo, coins/shop, Exact Dice purchase, Shockwave purchase,
+  split-dice movement, Bot/AI, networking, or unrelated mechanics.
+- Do not redesign the board/UI.
+- Do not perform the full post-expansion documentation rewrite.
+
+Verification performed:
+
+- Ran `uv sync`.
+- Ran `uv run pytest`: 1497 passed.
+- Ran `uv run pytest --cov`: 86.35% total coverage, above the configured 85% threshold.
+- Ran `uv run ruff check .`: all checks passed.
+- Ran `uv run python -m ludo.pygame_ui.main --smoke`: application entry point started and exited.
+
+Result summary:
+
+- Added special-die providers with deterministic and random implementations.
+- Extended turn flow with base roll, special bonus, approved movement value, fallback handling, and
+  action IDs.
+- Added fixed match hazards with deterministic generation and domain-resolved two-step penalties.
+- Added backward capture as a capture-only legal action, not a general backward move mode.
+- Extended facade snapshots/results with hazard positions, special-die state, movement value,
+  action kind, action ID, and hazard-trigger result data.
+- Rendered hazard markers and compact special-die movement feedback.
+- Added action-aware interaction so ambiguous same-piece choices can be selected explicitly by
+  action/destination instead of silently picking one.
+- Added audio mapping for hazard-triggered moves.
+
+Issues discovered:
+
+- Existing route-count regression tests needed explicit no-hazard setup because hazard penalty
+  routes intentionally add forced penalty route steps after approved movement.
+- Existing snapshot test builders needed default values for new facade fields.
+
+Follow-up/refinement:
+
+- A separate documentation prompt should update README, PRD, rules, UX, and architecture documents
+  for these new rules after the implementation is reviewed.
+- Future UI polish can improve multi-action selection presentation beyond destination clicking.
+
+Lessons learned:
+
+- Keeping action IDs at the facade boundary lets the UI distinguish forward movement from backward
+  capture without importing domain rules.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

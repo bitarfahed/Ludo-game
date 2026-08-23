@@ -158,11 +158,11 @@ def test_finished_piece_has_no_legal_move() -> None:
     assert MovementRules().propose_move(piece, dice_value=1) is None
 
 
-@pytest.mark.parametrize("dice_value", [0, 7])
+@pytest.mark.parametrize("dice_value", [0, 9])
 def test_invalid_dice_values_are_rejected(dice_value: int) -> None:
     piece = Piece(id="red-1", owner_color=PlayerColor.RED)
 
-    with pytest.raises(DiceValueError, match="dice value"):
+    with pytest.raises(DiceValueError, match="movement value"):
         MovementRules().propose_move(piece, dice_value)
 
 

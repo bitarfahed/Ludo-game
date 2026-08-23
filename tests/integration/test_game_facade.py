@@ -9,6 +9,8 @@ from ludo.app import FacadeResultKind, GameFacade, GameFacadeError
 from ludo.domain import (
     FixedClock,
     FixedDice,
+    FixedHazardRandomizer,
+    FixedSpecialDie,
     Match,
     OuterPathOccupancy,
     Piece,
@@ -29,7 +31,9 @@ def create_facade(
     facade.start_match(
         ("Alice", "Bob"),
         color_randomizer=FixedColorRandomizer(choices=[opposite_pair], samples=[colors]),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice(rolls or [6]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
     return facade
@@ -44,7 +48,9 @@ def create_match(
     match = Match.create(
         ("Alice", "Bob"),
         color_randomizer=FixedColorRandomizer(choices=[opposite_pair], samples=[colors]),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice(rolls),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
     match.turn_engine.players = players
@@ -312,7 +318,9 @@ def test_timer_expiration_result_is_exposed() -> None:
             choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
             samples=[(PlayerColor.RED, PlayerColor.YELLOW)],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice([6]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=clock,
     )
 

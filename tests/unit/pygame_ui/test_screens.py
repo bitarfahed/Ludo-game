@@ -13,6 +13,8 @@ from ludo.app import GameFacade
 from ludo.domain import (
     FixedClock,
     FixedDice,
+    FixedHazardRandomizer,
+    FixedSpecialDie,
     Match,
     Piece,
     PieceState,
@@ -331,7 +333,9 @@ def _deterministic_controller(rolls: list[int], clock: FixedClock) -> ScreenCont
             choices=[(PlayerColor.RED, PlayerColor.YELLOW)],
             samples=[(PlayerColor.RED, PlayerColor.YELLOW)],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice(rolls),
+        special_die=FixedSpecialDie([0] * 20),
         clock=clock,
     )
     return controller
@@ -380,7 +384,9 @@ def _match_with_colors(player_count: int, colors: tuple[PlayerColor, ...]) -> Ma
             choices=[colors] if player_count == 2 else [],
             samples=[colors],
         ),
+        hazard_randomizer=FixedHazardRandomizer([11, 24, 37, 50]),
         dice=FixedDice([1, 1, 1, 1]),
+        special_die=FixedSpecialDie([0] * 20),
         clock=FixedClock(),
     )
 
