@@ -107,12 +107,18 @@ def _dice_state(snapshot: GameSnapshot, geometry: BoardGeometry) -> DiceHudState
     current_color = snapshot.current_player.color.value if snapshot.current_player else ""
     return DiceHudState(
         bounds=geometry.center_dice_area,
+        base_bounds=geometry.base_die_area,
+        special_bounds=geometry.special_die_area,
         current_value=snapshot.current_dice_value,
         special_bonus=snapshot.current_special_bonus,
         special_bonus_applied=snapshot.special_bonus_applied,
         movement_value=snapshot.approved_movement_value,
-        roll_available=(
+        base_roll_available=(
             snapshot.phase is TurnPhase.WAITING_FOR_ROLL and snapshot.current_player is not None
+        ),
+        special_roll_available=(
+            snapshot.phase is TurnPhase.WAITING_FOR_SPECIAL_ROLL
+            and snapshot.current_player is not None
         ),
         accent_color=theme.color_for_name(current_color),
     )

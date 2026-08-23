@@ -35,6 +35,8 @@ class FacadeResultKind(StrEnum):
 
     MATCH_STARTED = "match_started"
     DICE_ROLLED = "dice_rolled"
+    BASE_DICE_ROLLED = "base_dice_rolled"
+    SPECIAL_DICE_ROLLED = "special_dice_rolled"
     NO_LEGAL_MOVE = "no_legal_move"
     PIECE_MOVED = "piece_moved"
     TRIPLE_SIX_CANCELLED = "triple_six_cancelled"
@@ -343,11 +345,21 @@ class GameFacade:
         raise GameFacadeError(msg)
 
     def roll(self) -> FacadeResult:
-        """Roll dice for the active player."""
+        """Roll the normal die for the active player."""
         match = self._require_active_match()
         before_player_id = self._current_player_id(match)
         try:
             event = match.turn_engine.roll()
+        except ValueError as exc:
+            raise GameFacadeError(str(exc)) from exc
+        return self._result_from_event(event, before_player_id)
+
+    def roll_special(self) -> FacadeResult:
+        """Roll the special die after the normal die has resolved."""
+        match = self._require_active_match()
+        before_player_id = self._current_player_id(match)
+        try:
+            event = match.turn_engine.roll_special()
         except ValueError as exc:
             raise GameFacadeError(str(exc)) from exc
         return self._result_from_event(event, before_player_id)
@@ -621,6 +633,8 @@ def _ranking_snapshots(match: Match) -> tuple[RankingSnapshot, ...]:
 def _result_kind(event_kind: TurnEventKind) -> FacadeResultKind:
     return {
         TurnEventKind.ROLL_ACCEPTED: FacadeResultKind.DICE_ROLLED,
+        TurnEventKind.BASE_ROLL_ACCEPTED: FacadeResultKind.BASE_DICE_ROLLED,
+        TurnEventKind.SPECIAL_ROLL_ACCEPTED: FacadeResultKind.SPECIAL_DICE_ROLLED,
         TurnEventKind.NO_LEGAL_MOVE: FacadeResultKind.NO_LEGAL_MOVE,
         TurnEventKind.MOVE_RESOLVED: FacadeResultKind.PIECE_MOVED,
         TurnEventKind.TRIPLE_SIX_CANCELLED: FacadeResultKind.TRIPLE_SIX_CANCELLED,

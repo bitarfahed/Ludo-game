@@ -27,10 +27,10 @@ ALL_COLORS = (
     PlayerColor.BLUE,
 )
 CORNER_TRANSITIONS = (
-    (4, 5),
-    (17, 18),
-    (30, 31),
-    (43, 44),
+    (5, 6),
+    (18, 19),
+    (31, 32),
+    (44, 45),
 )
 
 
@@ -102,7 +102,9 @@ def test_outer_to_home_path_route_remains_one_step_per_dice_value() -> None:
 
 def _legal_move_for(piece: Piece, dice_value: int) -> LegalMoveSnapshot:
     match = _match_for(piece, dice_value)
-    result = GameFacade.from_match(match).roll()
+    facade = GameFacade.from_match(match)
+    facade.roll()
+    result = facade.roll_special()
     assert len(result.legal_moves) == 1
     return result.legal_moves[0]
 

@@ -1661,6 +1661,103 @@ Lessons learned:
 - Keeping action IDs at the facade boundary lets the UI distinguish forward movement from backward
   capture without importing domain rules.
 
+## Gameplay Fix — Dice Flow, Yard Release, Home Entry & Action UX
+
+Prompt ID: Gameplay Fix
+
+Title: Dice Flow, Yard Release, Home Entry & Action UX
+
+Goal: Implement targeted fixes from manual playtest/audit findings: separate the normal and
+special dice, make `+2` optional, enforce base-die-only Yard release, add forced-six anti-stall
+behavior, correct Outer Path to Home Path geometry, improve visual path clarity, and keep
+same-piece multi-action selection explicit.
+
+Context: The game already included the Bonus Die, Hazard Squares, and Backward Capture expansion.
+The audit found that the special die was rolled automatically, synthetic sixes could release Yard
+pieces, fully trapped players could stall, and the 2D home-entry coordinates made pieces appear to
+overshoot their private Home Path.
+
+Full prompt or faithful prompt record: The gameplay-fix prompt was provided as an attached pasted
+text file. Its authoritative requirements included:
+
+- split normal die and special die into separate authoritative turn phases and facade/UI actions;
+- keep the special die configurable/injectable and explicitly clickable;
+- expose `base` and `base + 2` movement choices without automatically preferring the bonus value;
+- keep Triple Six, six-based bonus rolls, and Yard release tied only to the real base die;
+- add a forced real base six after a player begins fully in Yard and completes a turn without any
+  piece leaving Yard;
+- avoid marking a stall during a bonus-roll chain;
+- correct all four visual Outer Path to Home Path entries while preserving the 52-square topology;
+- improve static-board distinction between shared outer path, private Home Paths, Finish, and dice
+  areas;
+- preserve friendly-piece protection, private Home Paths, Hazard behavior, and Backward Capture
+  rules;
+- update only `docs/TODO.md` and this prompts book;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- manually inspect representative dice flow and Home-entry behavior where practical.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/app/facade.py`
+- `src/ludo/audio/service.py`
+- `src/ludo/domain/turns.py`
+- `src/ludo/geometry/board_geometry.py`
+- `src/ludo/geometry/grid.py`
+- `src/ludo/pygame_ui/board_renderer.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/interaction.py`
+- `src/ludo/pygame_ui/render_models.py`
+- `src/ludo/pygame_ui/render_state.py`
+- affected tests under `tests/`
+
+Constraints:
+
+- Do not implement Time Crystal, coins/shop, Split Dice, Bot/AI, networking, new power-ups, or
+  unrelated visual redesign.
+- Do not move authority for dice phases, forced-six state, Triple Six, Yard release, Home ownership,
+  or Backward Capture legality into Pygame.
+- Do not rewrite final documentation beyond TODO and this prompt log.
+
+Verification performed:
+
+- Added/updated tests for explicit base and special dice, no automatic special roll, Triple Six
+  skipping special roll, optional `+2` action exposure, synthetic six Yard rejection, real base-six
+  Yard release, forced-six stall recovery, route/home geometry continuity, multi-action selection,
+  screen flows, audio mapping, and existing route-count invariants.
+- Ran `uv run pytest`: 1506 passed.
+- Final verification to run: `uv sync`, `uv run pytest --cov`, `uv run ruff check .`, and practical
+  manual launch/inspection.
+
+Result summary:
+
+- Added `WAITING_FOR_SPECIAL_ROLL`, explicit `roll_special()`, and separate facade result kinds for
+  base and special dice.
+- Legal move construction now exposes explicit action IDs by movement value and keeps Yard release
+  attached to a real base six.
+- Added forced-six state to the turn engine for full-Yard stall recovery.
+- Corrected `OUTER_GRID_PATH` so each color's final outer entry is adjacent to that color's first
+  Home Path square.
+- Split the center dice UI into normal/special die controls and kept multi-action selection
+  destination/action aware.
+
+Issues discovered:
+
+- The earlier automatic special-die fallback was incompatible with strategic optional `+2`.
+- The domain route counts were still correct; the Home-entry defect was a 2D coordinate mapping
+  issue.
+
+Follow-up/refinement:
+
+- A future documentation prompt should update README, PRD, rules, UX, and architecture documents
+  after manual review of this corrected gameplay flow.
+
+Lessons learned:
+
+- Optional movement modifiers need to be represented as legal actions, not as a single approved
+  movement value chosen during dice resolution.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

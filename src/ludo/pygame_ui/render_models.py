@@ -91,12 +91,20 @@ class DiceHudState:
     """Center dice display state."""
 
     bounds: ScreenRect
+    base_bounds: ScreenRect
+    special_bounds: ScreenRect
     current_value: int | None
     special_bonus: int
     special_bonus_applied: bool
     movement_value: int | None
-    roll_available: bool
+    base_roll_available: bool
+    special_roll_available: bool
     accent_color: tuple[int, int, int]
+
+    @property
+    def roll_available(self) -> bool:
+        """Return whether any dice control is currently clickable."""
+        return self.base_roll_available or self.special_roll_available
 
 
 @dataclass(frozen=True, slots=True)

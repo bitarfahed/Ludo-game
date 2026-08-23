@@ -81,6 +81,7 @@ class TurnPhase(StrEnum):
     """Current turn decision phase."""
 
     WAITING_FOR_ROLL = "waiting_for_roll"
+    WAITING_FOR_SPECIAL_ROLL = "waiting_for_special_roll"
     WAITING_FOR_MOVE = "waiting_for_move"
     NO_LEGAL_MOVE = "no_legal_move"
 
@@ -89,6 +90,8 @@ class TurnEventKind(StrEnum):
     """Inspectable turn-engine event categories."""
 
     ROLL_ACCEPTED = "roll_accepted"
+    BASE_ROLL_ACCEPTED = "base_roll_accepted"
+    SPECIAL_ROLL_ACCEPTED = "special_roll_accepted"
     MOVE_RESOLVED = "move_resolved"
     NO_LEGAL_MOVE = "no_legal_move"
     TRIPLE_SIX_CANCELLED = "triple_six_cancelled"
@@ -162,13 +165,16 @@ class TurnEngine:
     legal_actions: tuple[LegalMoveAction, ...] = ()
     consecutive_sixes: int = 0
     outer_occupancies: dict[int, OuterPathOccupancy] = field(default_factory=dict)
+    forced_six_player_ids: frozenset[str] = frozenset()
     _deadline: float = field(init=False, repr=False)
+    _turn_started_all_yard: bool = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if not self.players:
             msg = "TurnEngine requires at least one active player."
             raise ValueError(msg)
         self._deadline = self.clock.now() + DECISION_TIMEOUT_SECONDS
+        self._turn_started_all_yard = self._all_pieces_in_yard(self.current_player)
 
     @property
     def current_player(self) -> Player:
@@ -223,12 +229,20 @@ class TurnEngine:
         self.legal_actions = ()
         self.consecutive_sixes = 0
         self._reset_timer()
+        self._turn_started_all_yard = (
+            self._all_pieces_in_yard(self.current_player) if self.players else False
+        )
 
     def roll(self) -> TurnEvent:
-        """Roll dice for the current player and enter move selection when possible."""
+        """Roll the normal die and wait for the explicit special die roll."""
         self._require_phase(TurnPhase.WAITING_FOR_ROLL)
         player = self.current_player
-        base_roll = self.dice.roll()
+        base_roll = (
+            MAX_DICE_VALUE if player.id in self.forced_six_player_ids else self.dice.roll()
+        )
+        self.forced_six_player_ids = frozenset(
+            player_id for player_id in self.forced_six_player_ids if player_id != player.id
+        )
 
         if base_roll == MAX_DICE_VALUE:
             self.consecutive_sixes += 1
@@ -240,21 +254,35 @@ class TurnEngine:
             self._end_turn()
             return event
 
-        special_bonus = self.special_die.roll_bonus()
-        movement_value = base_roll + special_bonus
-        legal_actions = self._legal_actions(player, movement_value)
-        special_applied = special_bonus > 0
-        if not legal_actions and special_bonus:
-            fallback_actions = self._legal_actions(player, base_roll)
-            if fallback_actions:
-                legal_actions = fallback_actions
-                movement_value = base_roll
-                special_applied = False
-
         self.last_roll = base_roll
+        self.last_special_bonus = 0
+        self.special_bonus_applied = False
+        self.approved_movement_value = None
+        self.legal_actions = ()
+        self.legal_piece_ids = ()
+        self.phase = TurnPhase.WAITING_FOR_SPECIAL_ROLL
+        self._reset_timer()
+        return TurnEvent(TurnEventKind.BASE_ROLL_ACCEPTED, player, base_roll)
+
+    def roll_special(self) -> TurnEvent:
+        """Roll the special die and construct explicit legal movement choices."""
+        self._require_phase(TurnPhase.WAITING_FOR_SPECIAL_ROLL)
+        player = self.current_player
+        if self.last_roll is None:
+            msg = "Cannot roll special die before the normal die."
+            raise ValueError(msg)
+
+        base_roll = self.last_roll
+        special_bonus = self.special_die.roll_bonus()
+        legal_actions = self._legal_actions_for_roll(player, base_roll, special_bonus)
+        special_applied = special_bonus > 0
+        movement_value = base_roll + special_bonus if special_applied else base_roll
+
         self.last_special_bonus = special_bonus
-        self.special_bonus_applied = special_applied
-        self.approved_movement_value = movement_value
+        self.special_bonus_applied = special_applied and any(
+            action.movement_value == base_roll + special_bonus for action in legal_actions
+        )
+        self.approved_movement_value = None
         self.legal_actions = legal_actions
         self.legal_piece_ids = tuple(dict.fromkeys(action.piece_id for action in legal_actions))
         if not legal_actions:
@@ -265,18 +293,18 @@ class TurnEngine:
                 base_roll,
                 special_bonus=special_bonus,
                 approved_movement_value=movement_value,
-                special_bonus_applied=special_applied,
+                special_bonus_applied=False,
             )
 
         self.phase = TurnPhase.WAITING_FOR_MOVE
         self._reset_timer()
         return TurnEvent(
-            TurnEventKind.ROLL_ACCEPTED,
+            TurnEventKind.SPECIAL_ROLL_ACCEPTED,
             player,
             base_roll,
             special_bonus=special_bonus,
-            approved_movement_value=movement_value,
-            special_bonus_applied=special_applied,
+            approved_movement_value=None,
+            special_bonus_applied=self.special_bonus_applied,
             legal_piece_ids=self.legal_piece_ids,
             legal_action_ids=tuple(action.action_id for action in legal_actions),
         )
@@ -287,7 +315,7 @@ class TurnEngine:
         if piece_id not in self.legal_piece_ids:
             msg = "Selected piece is not legal for the current dice value."
             raise ValueError(msg)
-        if self.last_roll is None or self.approved_movement_value is None:
+        if self.last_roll is None:
             msg = "Cannot select a piece before rolling."
             raise ValueError(msg)
 
@@ -306,7 +334,7 @@ class TurnEngine:
             self.last_roll,
             special_bonus=self.last_special_bonus,
             approved_movement_value=action.movement_value,
-            special_bonus_applied=self.special_bonus_applied,
+            special_bonus_applied=action.movement_value != self.last_roll,
             moved_piece=collision.moved_piece,
             collision_outcome=collision,
             bonus_reasons=frozenset(reasons),
@@ -343,6 +371,7 @@ class TurnEngine:
             self.approved_movement_value = None
             self.legal_piece_ids = ()
             self.legal_actions = ()
+            self._turn_started_all_yard = self._all_pieces_in_yard(self.current_player)
             self._reset_timer()
         else:
             self._end_turn()
@@ -364,6 +393,10 @@ class TurnEngine:
         if self.phase is TurnPhase.WAITING_FOR_ROLL:
             self._end_turn()
             return TurnEvent(TurnEventKind.ROLL_TIMEOUT, player)
+        if self.phase is TurnPhase.WAITING_FOR_SPECIAL_ROLL:
+            dice_value = self.last_roll
+            self._end_turn()
+            return TurnEvent(TurnEventKind.ROLL_TIMEOUT, player, dice_value)
         if self.phase is TurnPhase.WAITING_FOR_MOVE:
             dice_value = self.last_roll
             self._end_turn()
@@ -373,6 +406,15 @@ class TurnEngine:
     def _end_turn(self) -> None:
         if not self.players:
             return
+        ending_player = self.current_player
+        if self._turn_started_all_yard and self._all_pieces_in_yard(ending_player):
+            self.forced_six_player_ids = frozenset((*self.forced_six_player_ids, ending_player.id))
+        elif not self._all_pieces_in_yard(ending_player):
+            self.forced_six_player_ids = frozenset(
+                player_id
+                for player_id in self.forced_six_player_ids
+                if player_id != ending_player.id
+            )
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.phase = TurnPhase.WAITING_FOR_ROLL
         self.last_roll = None
@@ -383,6 +425,7 @@ class TurnEngine:
         self.legal_actions = ()
         self.consecutive_sixes = 0
         self._reset_timer()
+        self._turn_started_all_yard = self._all_pieces_in_yard(self.current_player)
 
     def _reset_timer(self) -> None:
         self._deadline = self.clock.now() + DECISION_TIMEOUT_SECONDS
@@ -441,17 +484,34 @@ class TurnEngine:
             return None
         return self.outer_occupancies.get(destination_index)
 
-    def _legal_actions(self, player: Player, movement_value: int) -> tuple[LegalMoveAction, ...]:
+    def _legal_actions_for_roll(
+        self, player: Player, base_roll: int, special_bonus: int
+    ) -> tuple[LegalMoveAction, ...]:
+        actions = list(self._legal_actions(player, base_roll, base_roll=base_roll))
+        if special_bonus <= 0:
+            return tuple(actions)
+        bonus_value = base_roll + special_bonus
+        actions.extend(self._legal_actions(player, bonus_value, base_roll=base_roll))
+        return tuple(actions)
+
+    def _legal_actions(
+        self, player: Player, movement_value: int, *, base_roll: int
+    ) -> tuple[LegalMoveAction, ...]:
         actions = []
         for piece in player.pieces:
-            forward = self.movement_rules.propose_move(piece, movement_value)
+            forward = None
+            if piece.state is PieceState.IN_YARD and movement_value != base_roll:
+                forward = None
+            elif piece.state is not PieceState.IN_YARD or base_roll == MAX_DICE_VALUE:
+                yard_movement = base_roll if piece.state is PieceState.IN_YARD else movement_value
+                forward = self.movement_rules.propose_move(piece, yard_movement)
             if forward is not None:
                 actions.append(
                     LegalMoveAction(
-                        action_id=f"{piece.id}:forward",
+                        action_id=f"{piece.id}:forward:{movement_value}",
                         piece_id=piece.id,
                         kind=MoveActionKind.FORWARD,
-                        movement_value=movement_value,
+                        movement_value=forward.dice_value,
                         proposal=forward,
                     )
                 )
@@ -473,12 +533,16 @@ class TurnEngine:
         if not outcome.capture_occurred:
             return None
         return LegalMoveAction(
-            action_id=f"{piece.id}:backward_capture",
+            action_id=f"{piece.id}:backward_capture:{movement_value}",
             piece_id=piece.id,
             kind=MoveActionKind.BACKWARD_CAPTURE,
             movement_value=movement_value,
             proposal=proposal,
         )
+
+    @staticmethod
+    def _all_pieces_in_yard(player: Player) -> bool:
+        return all(piece.state is PieceState.IN_YARD for piece in player.pieces)
 
     def _select_action(self, piece_id: str, action_id: str | None) -> LegalMoveAction:
         matches = tuple(action for action in self.legal_actions if action.piece_id == piece_id)

@@ -96,7 +96,11 @@ class AudioService:
 
 def audio_events_for_result(result: FacadeResult) -> tuple[AudioEvent, ...]:
     """Map a resolved facade result to audio events."""
-    if result.kind is FacadeResultKind.DICE_ROLLED:
+    if result.kind in {
+        FacadeResultKind.DICE_ROLLED,
+        FacadeResultKind.BASE_DICE_ROLLED,
+        FacadeResultKind.SPECIAL_DICE_ROLLED,
+    }:
         return (AudioEvent.DICE_ROLL,)
     if result.kind is not FacadeResultKind.PIECE_MOVED:
         return ()

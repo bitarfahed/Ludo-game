@@ -21,6 +21,17 @@ from ludo.pygame_ui.interaction import GameplayInteractionController
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
 
+def click_to_move_phase(
+    interaction: GameplayInteractionController,
+    geometry: BoardGeometry,
+    controller: ScreenController,
+) -> None:
+    assert interaction.handle_click(geometry.center_dice_area.center, controller)
+    interaction.animation.update(500)
+    assert interaction.handle_click(geometry.special_die_area.center, controller)
+    interaction.animation.update(500)
+
+
 def started_controller(rolls: list[int]) -> ScreenController:
     controller = ScreenController()
     controller.screen = ScreenState.GAME
@@ -45,7 +56,7 @@ def test_dice_click_works_only_in_roll_phase_and_routes_through_facade() -> None
     controller = started_controller([6, 3])
 
     assert interaction.handle_click(geometry.center_dice_area.center, controller)
-    assert controller.facade.snapshot().phase is TurnPhase.WAITING_FOR_MOVE
+    assert controller.facade.snapshot().phase is TurnPhase.WAITING_FOR_SPECIAL_ROLL
     assert controller.facade.snapshot().current_dice_value == 6
 
     assert not interaction.handle_click(geometry.center_dice_area.center, controller)
@@ -57,7 +68,7 @@ def test_legal_pieces_become_selectable_and_illegal_pieces_do_not() -> None:
     interaction = GameplayInteractionController(geometry)
     controller = started_controller([6])
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
+    click_to_move_phase(interaction, geometry, controller)
     legal_ids = {move.piece_id for move in controller.facade.snapshot().legal_moves}
 
     assert legal_ids == {f"player-1-piece-{index}" for index in range(1, 5)}
@@ -72,7 +83,7 @@ def test_one_legal_move_is_not_auto_selected() -> None:
     interaction = GameplayInteractionController(geometry)
     controller = controller_with_one_legal_outer_piece()
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
+    click_to_move_phase(interaction, geometry, controller)
     snapshot = controller.facade.snapshot()
 
     assert len(snapshot.legal_moves) == 1
@@ -84,13 +95,13 @@ def test_legal_piece_hover_exposes_destination_preview() -> None:
     interaction = GameplayInteractionController(geometry)
     controller = started_controller([6])
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
+    click_to_move_phase(interaction, geometry, controller)
     interaction.handle_hover(geometry.yard_piece_positions(PlayerColor.RED)[0], controller)
 
     assert interaction.preview is not None
     assert interaction.preview.piece_id == "player-1-piece-1"
     assert interaction.preview.bounds == geometry.outer_square(0)
-    assert interaction.preview.hint == "Forward 6"
+    assert interaction.preview.hint == "Use 6"
 
 
 def test_legal_piece_click_submits_move_and_updates_ui_state() -> None:
@@ -98,8 +109,7 @@ def test_legal_piece_click_submits_move_and_updates_ui_state() -> None:
     interaction = GameplayInteractionController(geometry)
     controller = started_controller([6])
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
-    interaction.animation.update(500)
+    click_to_move_phase(interaction, geometry, controller)
     assert interaction.handle_click(geometry.yard_piece_positions(PlayerColor.RED)[0], controller)
 
     moved = controller.facade.piece_state("player-1-piece-1")
@@ -116,7 +126,7 @@ def test_invalid_piece_click_and_outside_click_are_harmless() -> None:
     assert not interaction.handle_click((0, 0), controller)
     assert controller.facade.snapshot().phase is TurnPhase.WAITING_FOR_ROLL
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
+    click_to_move_phase(interaction, geometry, controller)
     assert not interaction.handle_click(geometry.yard_region(PlayerColor.BLUE).center, controller)
     assert controller.facade.snapshot().phase is TurnPhase.WAITING_FOR_MOVE
 
@@ -138,8 +148,7 @@ def test_repeated_piece_click_does_not_duplicate_action() -> None:
     controller = started_controller([6])
     piece_point = geometry.yard_piece_positions(PlayerColor.RED)[0]
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
-    interaction.animation.update(500)
+    click_to_move_phase(interaction, geometry, controller)
     assert interaction.handle_click(piece_point, controller)
     assert not interaction.handle_click(piece_point, controller)
 
@@ -163,7 +172,7 @@ def test_no_legal_roll_disables_piece_interaction() -> None:
     interaction = GameplayInteractionController(geometry)
     controller = started_controller([1])
 
-    interaction.handle_click(geometry.center_dice_area.center, controller)
+    click_to_move_phase(interaction, geometry, controller)
 
     assert controller.facade.snapshot().phase is TurnPhase.NO_LEGAL_MOVE
     assert controller.facade.snapshot().legal_moves == ()

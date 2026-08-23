@@ -91,6 +91,12 @@ def finished_piece(piece_id: str, color: PlayerColor) -> Piece:
     return Piece(id=piece_id, owner_color=color, state=PieceState.FINISHED)
 
 
+def roll_special_to_move(facade: GameFacade):
+    base = facade.roll()
+    special = facade.roll_special()
+    return base, special
+
+
 def test_match_creation_through_facade_returns_public_snapshot() -> None:
     facade = create_facade(colors=(PlayerColor.YELLOW, PlayerColor.RED))
 
@@ -129,10 +135,12 @@ def test_ui_facade_pause_preserves_remaining_time(monkeypatch) -> None:
 def test_valid_roll_flow_exposes_dice_and_legal_moves() -> None:
     facade = create_facade([6])
 
-    result = facade.roll()
+    base_result = facade.roll()
+    result = facade.roll_special()
 
-    assert result.kind is FacadeResultKind.DICE_ROLLED
-    assert result.dice_value == 6
+    assert base_result.kind is FacadeResultKind.BASE_DICE_ROLLED
+    assert base_result.dice_value == 6
+    assert result.kind is FacadeResultKind.SPECIAL_DICE_ROLLED
     assert facade.current_phase() is TurnPhase.WAITING_FOR_MOVE
     assert len(result.legal_moves) == 4
     assert {move.owner_color for move in result.legal_moves} == {PlayerColor.RED}
@@ -150,7 +158,8 @@ def test_legal_move_route_crosses_outer_to_home_boundary() -> None:
     )
     facade = GameFacade.from_match(match)
 
-    result = facade.roll()
+    facade.roll()
+    result = facade.roll_special()
 
     route = result.legal_moves[0].route
     assert route[0].global_outer_index == 51
@@ -164,7 +173,7 @@ def test_legal_move_route_crosses_outer_to_home_boundary() -> None:
 def test_valid_piece_selection_moves_piece_and_exposes_bonus_roll_state() -> None:
     facade = create_facade([6])
 
-    roll_result = facade.roll()
+    _, roll_result = roll_special_to_move(facade)
     result = facade.choose_piece(roll_result.legal_moves[0].piece_id)
 
     assert result.kind is FacadeResultKind.PIECE_MOVED
@@ -187,7 +196,7 @@ def test_turn_transition_is_exposed_after_non_bonus_move() -> None:
     )
     facade = GameFacade.from_match(match)
 
-    facade.roll()
+    roll_special_to_move(facade)
     result = facade.choose_piece("red-1")
 
     assert result.turn_changed
@@ -198,7 +207,8 @@ def test_turn_transition_is_exposed_after_non_bonus_move() -> None:
 def test_no_legal_move_result_and_notice_completion_are_exposed() -> None:
     facade = create_facade([1])
 
-    roll_result = facade.roll()
+    facade.roll()
+    roll_result = facade.roll_special()
     pass_result = facade.complete_no_legal_move_notice()
 
     assert roll_result.kind is FacadeResultKind.NO_LEGAL_MOVE
@@ -223,7 +233,7 @@ def test_capture_outcome_is_exposed_through_facade_result() -> None:
     match.turn_engine.set_occupancy(OuterPathOccupancy(global_index=3, pieces=(yellow_piece,)))
     facade = GameFacade.from_match(match)
 
-    facade.roll()
+    roll_special_to_move(facade)
     result = facade.choose_piece("red-1")
 
     assert result.capture_occurred
@@ -290,7 +300,7 @@ def test_finish_outcome_ranking_and_match_completion_are_exposed() -> None:
     )
     facade = GameFacade.from_match(match)
 
-    facade.roll()
+    roll_special_to_move(facade)
     result = facade.choose_piece("red-final")
 
     assert result.piece_finished
@@ -344,6 +354,7 @@ def test_invalid_roll_phase_is_rejected_cleanly() -> None:
 def test_illegal_piece_selection_is_rejected_cleanly() -> None:
     facade = create_facade([6])
     facade.roll()
+    facade.roll_special()
 
     with pytest.raises(GameFacadeError, match="not legal"):
         facade.choose_piece("missing-piece")

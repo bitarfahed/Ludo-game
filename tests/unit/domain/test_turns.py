@@ -1,5 +1,7 @@
 """Unit tests for deterministic turn flow, dice, bonuses, and timers."""
 
+from typing import Any
+
 from ludo.domain import (
     FixedClock,
     FixedDice,
@@ -12,6 +14,7 @@ from ludo.domain import (
     TurnEventKind,
     TurnPhase,
 )
+from ludo.domain.bonus_die import FixedSpecialDie
 
 
 def player(player_id: str, color: PlayerColor, pieces: tuple[Piece, ...] | None = None) -> Player:
@@ -40,6 +43,12 @@ def engine_with_rolls(rolls: list[int], players: tuple[Player, ...] | None = Non
     )
 
 
+def roll_to_move(engine: TurnEngine) -> tuple[Any, Any]:
+    base = engine.roll()
+    special = engine.roll_special()
+    return base, special
+
+
 def test_normal_roll_move_advances_to_next_player() -> None:
     red_piece = piece("red-1", PlayerColor.RED, 0)
     engine = engine_with_rolls(
@@ -50,13 +59,29 @@ def test_normal_roll_move_advances_to_next_player() -> None:
         ),
     )
 
-    roll_event = engine.roll()
+    roll_event, special_event = roll_to_move(engine)
     move_event = engine.select_piece("red-1")
 
-    assert roll_event.kind is TurnEventKind.ROLL_ACCEPTED
+    assert roll_event.kind is TurnEventKind.BASE_ROLL_ACCEPTED
+    assert special_event.kind is TurnEventKind.SPECIAL_ROLL_ACCEPTED
     assert move_event.kind is TurnEventKind.MOVE_RESOLVED
     assert engine.current_player.color is PlayerColor.BLUE
     assert engine.phase is TurnPhase.WAITING_FOR_ROLL
+
+
+def test_base_roll_does_not_roll_special_die_automatically() -> None:
+    special_die = FixedSpecialDie([2])
+    engine = engine_with_rolls(
+        [4], players=(player("red", PlayerColor.RED), player("blue", PlayerColor.BLUE))
+    )
+    engine.special_die = special_die
+
+    event = engine.roll()
+
+    assert event.kind is TurnEventKind.BASE_ROLL_ACCEPTED
+    assert engine.phase is TurnPhase.WAITING_FOR_SPECIAL_ROLL
+    assert engine.last_special_bonus == 0
+    assert special_die.bonuses == [2]
 
 
 def test_roll_six_grants_bonus_roll() -> None:
@@ -64,7 +89,7 @@ def test_roll_six_grants_bonus_roll() -> None:
         [6], players=(player("red", PlayerColor.RED), player("blue", PlayerColor.BLUE))
     )
 
-    engine.roll()
+    roll_to_move(engine)
     event = engine.select_piece("red-piece-1")
 
     assert event.bonus_granted
@@ -85,7 +110,7 @@ def test_capture_grants_bonus_roll() -> None:
     )
     engine.set_occupancy(OuterPathOccupancy(global_index=3, pieces=(blue_piece,)))
 
-    engine.roll()
+    roll_to_move(engine)
     event = engine.select_piece("red-1")
 
     assert event.collision_outcome is not None
@@ -109,7 +134,7 @@ def test_finish_grants_bonus_roll() -> None:
         ),
     )
 
-    engine.roll()
+    roll_to_move(engine)
     event = engine.select_piece("red-1")
 
     assert event.bonus_reasons == frozenset({"finish"})
@@ -128,7 +153,7 @@ def test_multiple_bonus_reasons_grant_only_one_bonus_roll() -> None:
     )
     engine.set_occupancy(OuterPathOccupancy(global_index=6, pieces=(blue_piece,)))
 
-    engine.roll()
+    roll_to_move(engine)
     event = engine.select_piece("red-1")
 
     assert event.bonus_granted
@@ -141,9 +166,9 @@ def test_bonus_roll_can_generate_another_bonus() -> None:
         [6, 6], players=(player("red", PlayerColor.RED), player("blue", PlayerColor.BLUE))
     )
 
-    engine.roll()
+    roll_to_move(engine)
     first = engine.select_piece("red-piece-1")
-    engine.roll()
+    roll_to_move(engine)
     second = engine.select_piece("red-piece-2")
 
     assert first.bonus_granted
@@ -160,7 +185,8 @@ def test_unusable_roll_grants_no_bonus_even_when_six() -> None:
         [6], players=(player("red", PlayerColor.RED, finished), player("blue", PlayerColor.BLUE))
     )
 
-    event = engine.roll()
+    engine.roll()
+    event = engine.roll_special()
 
     assert event.kind is TurnEventKind.NO_LEGAL_MOVE
     assert not event.bonus_granted
@@ -175,9 +201,9 @@ def test_triple_six_cancels_only_third_roll_and_keeps_first_two_moves() -> None:
         players=(player("red", PlayerColor.RED), player("blue", PlayerColor.BLUE)),
     )
 
-    engine.roll()
+    roll_to_move(engine)
     engine.select_piece("red-piece-1")
-    engine.roll()
+    roll_to_move(engine)
     engine.select_piece("red-piece-2")
     event = engine.roll()
 
@@ -197,18 +223,18 @@ def test_non_six_resets_consecutive_six_sequence() -> None:
             player_with_piece("blue", PlayerColor.BLUE, blue_piece),
         ),
     )
-    engine.roll()
+    roll_to_move(engine)
     engine.select_piece("red-1")
-    engine.roll()
+    roll_to_move(engine)
     engine.select_piece("red-fill-piece-1")
     engine.set_occupancy(OuterPathOccupancy(global_index=10, pieces=(blue_piece,)))
 
-    engine.roll()
+    roll_to_move(engine)
     engine.select_piece("red-1")
     event = engine.roll()
 
-    assert event.kind is TurnEventKind.ROLL_ACCEPTED
-    assert engine.phase is TurnPhase.WAITING_FOR_MOVE
+    assert event.kind is TurnEventKind.BASE_ROLL_ACCEPTED
+    assert engine.phase is TurnPhase.WAITING_FOR_SPECIAL_ROLL
 
 
 def test_roll_timeout_ends_turn() -> None:
@@ -227,6 +253,25 @@ def test_roll_timeout_ends_turn() -> None:
     assert engine.current_player.color is PlayerColor.BLUE
 
 
+def test_special_roll_timeout_ends_turn_without_inventing_special_result() -> None:
+    clock = FixedClock()
+    engine = TurnEngine(
+        players=(player("red", PlayerColor.RED), player("blue", PlayerColor.BLUE)),
+        dice=FixedDice([6]),
+        clock=clock,
+    )
+
+    engine.roll()
+    clock.advance(10)
+    event = engine.expire_decision_if_needed()
+
+    assert event is not None
+    assert event.kind is TurnEventKind.ROLL_TIMEOUT
+    assert event.dice_value == 6
+    assert engine.current_player.color is PlayerColor.BLUE
+    assert engine.last_special_bonus == 0
+
+
 def test_move_timeout_ends_turn_without_auto_selecting_piece() -> None:
     clock = FixedClock()
     engine = TurnEngine(
@@ -236,6 +281,7 @@ def test_move_timeout_ends_turn_without_auto_selecting_piece() -> None:
     )
 
     engine.roll()
+    engine.roll_special()
     clock.advance(10)
     event = engine.expire_decision_if_needed()
 
@@ -265,6 +311,7 @@ def test_active_player_rotation_skips_non_participating_colors() -> None:
     )
 
     engine.roll()
+    engine.roll_special()
     engine.complete_no_legal_move_notice()
 
     assert engine.current_player.color is PlayerColor.YELLOW
@@ -274,6 +321,7 @@ def test_dice_values_are_injected_deterministically() -> None:
     engine = engine_with_rolls([4, 5])
 
     assert engine.roll().dice_value == 4
+    engine.roll_special()
     engine.complete_no_legal_move_notice()
     assert engine.roll().dice_value == 5
 
@@ -290,3 +338,68 @@ def test_clock_controls_timeout_deterministically() -> None:
     assert engine.expire_decision_if_needed() is None
     clock.advance(1)
     assert engine.expire_decision_if_needed() is not None
+
+
+def test_full_yard_stall_forces_next_base_six() -> None:
+    red = player("red", PlayerColor.RED)
+    blue_piece = piece("blue-1", PlayerColor.BLUE, 0)
+    blue = player_with_piece("blue", PlayerColor.BLUE, blue_piece)
+    engine = engine_with_rolls([1, 1, 2], players=(red, blue))
+
+    assert engine.roll().dice_value == 1
+    assert engine.roll_special().kind is TurnEventKind.NO_LEGAL_MOVE
+    engine.complete_no_legal_move_notice()
+    roll_to_move(engine)
+    engine.select_piece("blue-1")
+
+    assert engine.current_player.color is PlayerColor.RED
+    assert engine.roll().dice_value == 6
+
+
+def test_forced_six_releases_yard_piece_and_resets_pending_state() -> None:
+    red = player("red", PlayerColor.RED)
+    blue_piece = piece("blue-1", PlayerColor.BLUE, 0)
+    blue = player_with_piece("blue", PlayerColor.BLUE, blue_piece)
+    engine = engine_with_rolls([1, 1, 2], players=(red, blue))
+
+    engine.roll()
+    engine.roll_special()
+    engine.complete_no_legal_move_notice()
+    roll_to_move(engine)
+    engine.select_piece("blue-1")
+    engine.roll()
+    engine.roll_special()
+    event = engine.select_piece("red-piece-1")
+
+    assert event.moved_piece is not None
+    assert event.moved_piece.state is PieceState.ON_OUTER_PATH
+    assert "red" not in engine.forced_six_player_ids
+
+
+def test_active_piece_prevents_forced_six_stall_state() -> None:
+    red_piece = piece("red-1", PlayerColor.RED, 0)
+    engine = engine_with_rolls(
+        [1],
+        players=(
+            player_with_piece("red", PlayerColor.RED, red_piece),
+            player("blue", PlayerColor.BLUE),
+        ),
+    )
+
+    roll_to_move(engine)
+    engine.select_piece("red-1")
+
+    assert "red" not in engine.forced_six_player_ids
+
+
+def test_bonus_chain_does_not_mark_forced_six_stall_after_yard_release() -> None:
+    engine = engine_with_rolls(
+        [6], players=(player("red", PlayerColor.RED), player("blue", PlayerColor.BLUE))
+    )
+
+    roll_to_move(engine)
+    event = engine.select_piece("red-piece-1")
+
+    assert event.bonus_granted
+    assert "red" not in engine.forced_six_player_ids
+    assert engine.current_player.color is PlayerColor.RED

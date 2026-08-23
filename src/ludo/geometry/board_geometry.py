@@ -147,6 +147,19 @@ class BoardGeometry:
         """Return the central dice placeholder area."""
         return self._grid_rect(7, 7)
 
+    @property
+    def base_die_area(self) -> ScreenRect:
+        """Return the clickable normal-die portion of the center dice area."""
+        rect = self.center_dice_area
+        return ScreenRect(rect.x, rect.y, rect.width, rect.height // 2 + 1)
+
+    @property
+    def special_die_area(self) -> ScreenRect:
+        """Return the clickable special-die portion of the center dice area."""
+        rect = self.center_dice_area
+        upper = rect.height // 2 + 1
+        return ScreenRect(rect.x, rect.y + upper, rect.width, rect.height - upper)
+
     def player_label_area(self, color: PlayerColor) -> ScreenRect:
         """Return a player-name label area near the color's Yard."""
         yard = self.yard_region(color)

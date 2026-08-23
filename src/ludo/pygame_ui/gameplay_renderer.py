@@ -120,28 +120,61 @@ class GameplayRenderer:
         animation: AnimationManager | None,
     ) -> None:
         rect = _to_pygame_rect(dice.bounds)
-        border = dice.accent_color if dice.roll_available else theme.BORDER
         pygame.draw.rect(surface, theme.SURFACE, rect, border_radius=7)
-        pygame.draw.rect(surface, border, rect, width=3, border_radius=7)
+        pygame.draw.rect(surface, theme.BORDER, rect, width=2, border_radius=7)
         rolling = animation is not None and animation.dice is not None
-        if rolling:
-            label_text = str(animation.dice.display_value())
-        else:
-            label_text = str(dice.current_value) if dice.current_value is not None else "Roll"
-        label_font = font if dice.current_value is not None or rolling else small_font
-        label = label_font.render(label_text, True, theme.TEXT)
-        surface.blit(label, label.get_rect(center=(rect.centerx, rect.centery - 3)))
+        pygame.draw.line(surface, theme.BORDER, rect.midleft, rect.midright, width=1)
+        self._draw_die_half(
+            surface,
+            _to_pygame_rect(dice.base_bounds),
+            "N",
+            (
+                str(animation.dice.display_value())
+                if rolling and dice.base_roll_available
+                else str(dice.current_value)
+                if dice.current_value is not None
+                else "Roll"
+            ),
+            dice.base_roll_available,
+            dice.accent_color,
+            font,
+            small_font,
+        )
+        special_value = "+2" if dice.special_bonus else "0"
+        if rolling and dice.special_roll_available:
+            special_value = "..."
+        self._draw_die_half(
+            surface,
+            _to_pygame_rect(dice.special_bounds),
+            "S",
+            "Roll" if dice.special_roll_available and not rolling else special_value,
+            dice.special_roll_available,
+            dice.accent_color,
+            font,
+            small_font,
+        )
         if not rolling and dice.current_value is not None and dice.special_bonus:
-            bonus_text = "+2" if dice.special_bonus_applied else "+2 off"
-            movement = dice.movement_value or dice.current_value
-            hint = small_font.render(f"{bonus_text} = {movement}", True, dice.accent_color)
-            surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
-        elif rolling:
-            hint = small_font.render("...", True, dice.accent_color)
-            surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
-        elif dice.roll_available:
-            hint = small_font.render("ready", True, dice.accent_color)
-            surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom - 8)))
+            hint = small_font.render("choose distance", True, dice.accent_color)
+            surface.blit(hint, hint.get_rect(center=(rect.centerx, rect.bottom + 8)))
+
+    @staticmethod
+    def _draw_die_half(
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        prefix: str,
+        value: str,
+        active: bool,
+        accent: tuple[int, int, int],
+        font: pygame.font.Font,
+        small_font: pygame.font.Font,
+    ) -> None:
+        border = accent if active else theme.BORDER
+        pygame.draw.rect(surface, border, rect, width=2 if active else 1, border_radius=5)
+        label = small_font.render(prefix, True, theme.TEXT_MUTED)
+        surface.blit(label, (rect.x + 3, rect.y + 1))
+        value_font = small_font if value == "Roll" else font
+        text = value_font.render(value, True, theme.TEXT)
+        surface.blit(text, text.get_rect(center=rect.center))
 
     def _draw_player_hud(
         self,

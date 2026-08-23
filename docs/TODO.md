@@ -110,4 +110,15 @@ Default owner: Developer / Codex-assisted.
 | Implement Hazard Squares | Complete | High | Developer / Codex-assisted | Board topology and collision rules | Four fixed match hazards, two-step penalty, collision after penalty, and facade exposure are tested. |
 | Implement Backward Capture | Complete | High | Developer / Codex-assisted | Occupancy/capture rules | Capture-only backward actions, action disambiguation, and capture bonus behavior are tested. |
 
+## Gameplay Fix: Dice Flow, Yard Release, Home Entry, and Action UX
+
+| Task | Status | Priority | Owner | Dependencies | Definition of Done |
+| --- | --- | --- | --- | --- | --- |
+| Separate normal and special dice | Complete | High | Developer / Codex-assisted | Gameplay expansion | Base roll and special roll are separate facade/domain/UI actions with timer phases and tests. |
+| Make `+2` movement optional | Complete | High | Developer / Codex-assisted | Special die | Base and bonus movement choices are exposed as distinct legal actions when available. |
+| Enforce base-die-only Yard release | Complete | High | Developer / Codex-assisted | Movement rules | Synthetic six cannot release from Yard; real base six can. |
+| Add forced-six anti-stall rule | Complete | High | Developer / Codex-assisted | Turn engine | Full-Yard stall sets a forced real six on the player's next normal turn and resets correctly. |
+| Correct Home-entry geometry | Complete | High | Developer / Codex-assisted | Board geometry | All four Outer Path to Home Path entries are visually continuous while preserving 52 outer squares. |
+| Clarify multi-action selection UX | Complete | Medium | Developer / Codex-assisted | Backward Capture | Same-piece forward/backward actions remain selectable by explicit destination/action ID. |
+
 Remaining planned work is release/documentation polish, not core gameplay implementation.

@@ -73,6 +73,7 @@ class BoardRenderer:
                 fill = (249, 251, 255)
             pygame.draw.rect(surface, fill, _to_pygame_rect(rect))
             pygame.draw.rect(surface, theme.BORDER, _to_pygame_rect(rect), width=1)
+            pygame.draw.rect(surface, theme.TEXT_MUTED, _to_pygame_rect(rect), width=2)
             if index in self.geometry.safe_squares:
                 marker = "S" if index in self.geometry.topology.start_positions.values() else "*"
                 label = font.render(marker, True, theme.TEXT_MUTED)
@@ -85,7 +86,7 @@ class BoardRenderer:
         for color in PlayerColor:
             for rect in self.geometry.home_path_squares(color):
                 pygame.draw.rect(surface, _soft_color(color), _to_pygame_rect(rect))
-                pygame.draw.rect(surface, _color(color), _to_pygame_rect(rect), width=1)
+                pygame.draw.rect(surface, _color(color), _to_pygame_rect(rect), width=2)
 
     def _draw_finish_regions(self, surface: pygame.Surface, small_font: pygame.font.Font) -> None:
         for color in PlayerColor:
@@ -98,8 +99,17 @@ class BoardRenderer:
         rect = self.geometry.center_dice_area
         pygame.draw.rect(surface, theme.SURFACE_MUTED, _to_pygame_rect(rect), border_radius=6)
         pygame.draw.rect(surface, theme.BORDER, _to_pygame_rect(rect), width=2, border_radius=6)
-        label = small_font.render("Dice", True, theme.TEXT_MUTED)
-        surface.blit(label, label.get_rect(center=rect.center))
+        pygame.draw.line(
+            surface,
+            theme.BORDER,
+            (rect.x, rect.y + rect.height // 2),
+            (rect.x + rect.width, rect.y + rect.height // 2),
+            width=1,
+        )
+        normal = small_font.render("N", True, theme.TEXT_MUTED)
+        special = small_font.render("S", True, theme.TEXT_MUTED)
+        surface.blit(normal, normal.get_rect(center=self.geometry.base_die_area.center))
+        surface.blit(special, special.get_rect(center=self.geometry.special_die_area.center))
 
 
 def _draw_shadowed_rect(

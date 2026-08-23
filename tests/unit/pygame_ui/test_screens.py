@@ -184,7 +184,10 @@ def test_no_legal_move_notice_counts_down_and_passes_turn() -> None:
     controller = _deterministic_controller([1], clock=clock)
 
     dice_center = renderer.board_renderer.geometry.center_dice_area.center
+    special_center = renderer.board_renderer.geometry.special_die_area.center
     renderer.handle_event(_click(dice_center), controller)
+    renderer.animation.update(500)
+    renderer.handle_event(_click(special_center), controller)
     assert controller.no_legal_notice_ms_remaining == 5_000
     assert controller.snapshot().phase is TurnPhase.NO_LEGAL_MOVE
 
@@ -214,6 +217,7 @@ def test_move_timeout_feedback_and_transition() -> None:
     clock = FixedClock()
     controller = _deterministic_controller([6], clock=clock)
     controller.facade.roll()
+    controller.facade.roll_special()
 
     clock.advance(10)
     renderer.update(1, controller)
@@ -262,6 +266,7 @@ def test_ranking_notification_occurs_and_ranked_player_leaves_rotation() -> None
     controller.facade = _facade_with_finishing_piece(3)
 
     controller.facade.roll()
+    controller.facade.roll_special()
     result = controller.facade.choose_piece("red-final")
     renderer._process_result(result, controller)
 
@@ -299,6 +304,7 @@ def test_representative_match_completion_flow_reaches_results() -> None:
     controller.facade = _facade_with_finishing_piece(2)
 
     controller.facade.roll()
+    controller.facade.roll_special()
     result = controller.facade.choose_piece("red-final")
     renderer._process_result(result, controller)
 

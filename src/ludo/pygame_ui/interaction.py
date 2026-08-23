@@ -46,8 +46,10 @@ class GameplayInteractionController:
         snapshot = controller.snapshot()
         if snapshot is None:
             return False
-        if snapshot.phase is not None and self.geometry.center_dice_area.contains(position):
-            return self._try_roll(controller)
+        if self.geometry.base_die_area.contains(position):
+            return self._try_base_roll(controller)
+        if self.geometry.special_die_area.contains(position):
+            return self._try_special_roll(controller)
         destination_move = self._legal_destination_at(position, snapshot)
         if destination_move is not None:
             return self._try_choose_piece(
@@ -68,26 +70,32 @@ class GameplayInteractionController:
         if snapshot is None:
             return
         self.inspection = build_occupancy_inspection(snapshot, self.geometry, position)
+        destination_move = self._legal_destination_at(position, snapshot)
+        if destination_move is not None:
+            bounds = self._destination_bounds(destination_move.destination)
+            if bounds is not None:
+                self.preview = DestinationPreview(
+                    destination_move.piece_id,
+                    bounds,
+                    _action_hint(destination_move),
+                )
+            return
         piece_id = self._legal_piece_at(position, snapshot)
         if piece_id is None:
             return
-        legal_move = _legal_move_by_id(snapshot.legal_moves, piece_id)
-        if legal_move is None:
+        matches = _legal_moves_by_id(snapshot.legal_moves, piece_id)
+        if len(matches) != 1:
             return
+        legal_move = matches[0]
         bounds = self._destination_bounds(legal_move.destination)
         if bounds is not None:
-            hint = (
-                "Backward Capture"
-                if legal_move.action_kind.value == "backward_capture"
-                else f"Forward {legal_move.movement_value}"
-            )
             self.preview = DestinationPreview(
                 piece_id,
                 bounds,
-                hint,
+                _action_hint(legal_move),
             )
 
-    def _try_roll(self, controller: ScreenController) -> bool:
+    def _try_base_roll(self, controller: ScreenController) -> bool:
         if controller.facade is None:
             return False
         snapshot = controller.facade.snapshot()
@@ -105,13 +113,30 @@ class GameplayInteractionController:
         self.latest_result = result
         return True
 
+    def _try_special_roll(self, controller: ScreenController) -> bool:
+        if controller.facade is None:
+            return False
+        snapshot = controller.facade.snapshot()
+        if snapshot.phase is not TurnPhase.WAITING_FOR_SPECIAL_ROLL or not snapshot.current_player:
+            return False
+        try:
+            result = controller.facade.roll_special()
+        except GameFacadeError:
+            return False
+        self.animation.start_dice(result.special_bonus)
+        self.audio.play_result(result)
+        self.preview = None
+        self.inspection = None
+        self.latest_result = result
+        return True
+
     def _try_choose_piece(
         self, controller: ScreenController, piece_id: str, action_id: str | None
     ) -> bool:
         if controller.facade is None:
             return False
         snapshot = controller.facade.snapshot()
-        legal_move = _legal_move_by_id(snapshot.legal_moves, piece_id)
+        legal_move = _legal_move_by_action(snapshot.legal_moves, piece_id, action_id)
         if legal_move is None:
             return False
         try:
@@ -189,3 +214,28 @@ def _legal_move_by_id(
         if move.piece_id == piece_id:
             return move
     return None
+
+
+def _legal_moves_by_id(
+    legal_moves: tuple[LegalMoveSnapshot, ...], piece_id: str
+) -> tuple[LegalMoveSnapshot, ...]:
+    return tuple(move for move in legal_moves if move.piece_id == piece_id)
+
+
+def _legal_move_by_action(
+    legal_moves: tuple[LegalMoveSnapshot, ...], piece_id: str, action_id: str | None
+) -> LegalMoveSnapshot | None:
+    matches = _legal_moves_by_id(legal_moves, piece_id)
+    if action_id is not None:
+        for move in matches:
+            if move.action_id == action_id:
+                return move
+        return None
+    return matches[0] if len(matches) == 1 else None
+
+
+def _action_hint(move: LegalMoveSnapshot) -> str:
+    if move.action_kind.value == "backward_capture":
+        return f"Backward {move.movement_value}"
+    suffix = " (+2)" if move.movement_value != move.dice_value else ""
+    return f"Use {move.movement_value}{suffix}"

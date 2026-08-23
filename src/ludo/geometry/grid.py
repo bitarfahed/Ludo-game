@@ -9,6 +9,7 @@ DEFAULT_BOARD_SIZE = 570
 DEFAULT_WINDOW_SIZE = (960, 640)
 
 OUTER_GRID_PATH = (
+    (0, 6),
     (1, 6),
     (2, 6),
     (3, 6),
@@ -60,7 +61,6 @@ OUTER_GRID_PATH = (
     (1, 8),
     (0, 8),
     (0, 7),
-    (0, 6),
 )
 
 HOME_GRID_PATHS = {

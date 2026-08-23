@@ -6,10 +6,17 @@ from ludo.geometry import BoardGeometry, BoardHitKind
 from ludo.geometry.grid import OUTER_GRID_PATH
 
 CORNER_TRANSITIONS = {
-    4: ((5, 6), (6, 5)),
-    17: ((8, 5), (9, 6)),
-    30: ((9, 8), (8, 9)),
-    43: ((6, 9), (5, 8)),
+    5: ((5, 6), (6, 5)),
+    18: ((8, 5), (9, 6)),
+    31: ((9, 8), (8, 9)),
+    44: ((6, 9), (5, 8)),
+}
+
+HOME_ENTRY_OUTER_INDICES = {
+    PlayerColor.RED: 51,
+    PlayerColor.GREEN: 12,
+    PlayerColor.YELLOW: 25,
+    PlayerColor.BLUE: 38,
 }
 
 
@@ -75,6 +82,18 @@ def test_start_positions_map_to_outer_squares() -> None:
     for color in PlayerColor:
         start_index = geometry.topology.start_position(color)
         assert geometry.outer_square(start_index) == geometry.safe_squares[start_index]
+
+
+def test_outer_to_home_entry_is_geometrically_continuous_for_every_color() -> None:
+    geometry = BoardGeometry()
+
+    for color, outer_index in HOME_ENTRY_OUTER_INDICES.items():
+        outer = geometry.outer_square(outer_index)
+        home = geometry.home_path_square(color, 0)
+        column_delta = abs(home.center[0] - outer.center[0]) // geometry.cell_size
+        row_delta = abs(home.center[1] - outer.center[1]) // geometry.cell_size
+
+        assert (column_delta, row_delta) in {(1, 0), (0, 1)}
 
 
 def test_required_board_regions_are_inside_board_or_window() -> None:
