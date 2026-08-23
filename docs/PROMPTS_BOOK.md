@@ -2017,6 +2017,93 @@ Lessons learned:
 - Global board wraparound and player-relative journey progress are different invariants; backward
   forced movement must operate on journey progress first.
 
+## Full Documentation Update — Current Implemented Game
+
+Prompt ID: Full Documentation Update Current Game
+
+Title: Current Implemented Game Documentation Audit
+
+Goal: Audit and update repository documentation so current-state docs describe the implemented and
+tested playable desktop Ludo game rather than older planning or milestone assumptions.
+
+Context: The game already included the playable Pygame application, GameFacade, explicit normal
+die plus Special Die flow, forced Yard-release anti-stall behavior, Hazard/Boost/Shield special
+squares, Backward Capture, legal destination `V` markers, animations, audio, and the Hazard
+Start-clamping bugfix.
+
+Full prompt or faithful prompt record: The documentation-update prompt was provided as an attached
+pasted text file. Its authoritative requirements included:
+
+- inspect current implementation, tests, and docs before editing;
+- use current tested implementation as source of truth;
+- update `README.md` as a GitHub-style landing page for a working playable game;
+- update `docs/PRD_GAME_RULES.md` with current rules, including the two-dice flow, forced Yard
+  release, Hazards, Boosts, Shields, Backward Capture, Safe/Start alignment, timers, ranking, and
+  no-legal behavior;
+- update `docs/UX_DESIGN.md` with current board visuals, center dice controls, legal destination
+  `V` markers, special-square markers, shielded pieces, stacks, hover inspection, animations,
+  audio, and results;
+- update `docs/PLAN.md` and relevant PRD sections to describe the implemented architecture;
+- audit `docs/TODO.md` for stale planned/completed status;
+- audit `pyproject.toml` descriptive metadata only, without changing build/tooling/version settings
+  unnecessarily;
+- append this work to `docs/PROMPTS_BOOK.md`;
+- search for stale current-state documentation claims such as old Hazard counts, automatic Special
+  Die behavior, missing Boost/Shield docs, and obsolete test counts;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- verify the documented launch command with a smoke launch;
+- do not implement gameplay features or modify tests to make documentation true.
+
+Files expected to change:
+
+- `README.md`
+- `docs/PRD.md`
+- `docs/PRD_GAME_RULES.md`
+- `docs/UX_DESIGN.md`
+- `docs/PLAN.md`
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+
+Constraints:
+
+- Do not rewrite historical prompt entries to pretend later functionality existed earlier.
+- Do not implement Portal, Double-or-Nothing, Coins/Shop, Time Crystal/Undo, Split Dice, Bot/AI, or
+  networking.
+- Do not weaken coverage or lint configuration.
+- Do not fabricate screenshots, metrics, or manual gameplay verification.
+
+Verification performed:
+
+- Updated README, PRD, rules, UX, PLAN, TODO, and this prompt book.
+- Confirmed `pyproject.toml` description already matched the playable current game, so metadata was
+  not changed.
+- Searched current-state docs for stale Hazard counts, automatic Special Die wording, missing
+  Boost/Shield references, and outdated verification counts.
+- Ran `uv sync`: passed.
+- Ran `uv run pytest`: 1553 passed.
+- Ran `uv run pytest --cov`: 86.63% total coverage, above the configured 85% threshold.
+- Ran `uv run ruff check .`: all checks passed.
+- Ran `uv run python -m ludo.pygame_ui.main --smoke`: passed.
+
+Result summary:
+
+- README now presents the project as a working desktop Ludo game with current features, commands,
+  controls, architecture, and verification status.
+- Rules documentation now covers the implemented base roll/Special Die/chosen movement flow,
+  forced Yard release, Hazards, Boosts, Shields, Backward Capture, Safe/Start alignment, timers,
+  ranking, and special-square collision order.
+- UX documentation now describes current board visuals, `V` markers, normal/Special Die controls,
+  special-square presentation, shield indicators, stack inspection, animation, audio, pause, and
+  results.
+- Architecture documentation now includes the implemented special-square module, facade snapshot
+  fields/events, explicit Special Die phase, and current verification counts.
+
+Lessons learned:
+
+- Current-state docs need to be audited separately from historical prompt records; old prompt
+  counts and feature scopes are useful history but should not leak into the authoritative product
+  docs.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

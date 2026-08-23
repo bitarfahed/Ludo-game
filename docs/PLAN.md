@@ -32,7 +32,9 @@ src/
     ├── domain/
     │   ├── __init__.py
     │   ├── board.py
+    │   ├── bonus_die.py
     │   ├── colors.py
+    │   ├── hazards.py
     │   ├── match.py
     │   ├── movement.py
     │   ├── occupancy.py
@@ -70,7 +72,8 @@ tests/
 ## Responsibility Boundaries
 
 - **Domain/game logic**: colors, players, pieces, board topology, movement, capture, protected
-  occupancy, bonus rolls, Triple Six, turn rotation, timers, ranking, and match completion.
+  occupancy, special-square effects, bonus rolls, Triple Six, turn rotation, timers, ranking, and
+  match completion.
 - **Board topology**: 1D logical outer path, color starts, Home Paths, safe-square identities, and
   Finished as a separate destination.
 - **Application/SDK facade**: public boundary used by Pygame and future controllers.
@@ -138,11 +141,13 @@ flowchart TB
 - rankings and match-complete state.
 
 Facade snapshots include players, inactive colors, current player, turn phase, timer state, current
-dice value, legal moves, outer occupancies, rankings, and completion status.
+dice value, legal moves, outer occupancies, Hazard/Boost/Shield-square positions, rankings, and
+completion status.
 
 Facade command results include structured events such as dice rolled, no legal move, piece moved,
 triple-six cancellation, turn passed, roll timeout, and move timeout. Results also expose capture,
-finish, bonus, ranking, turn-change, and match-completion information.
+finish, bonus, Hazard, Boost, Shield acquired, Shield broken, ranking, turn-change, and
+match-completion information.
 
 ## Game State And State Machine
 
@@ -153,9 +158,11 @@ stateDiagram-v2
     [*] --> Setup
     Setup --> RollPhase: match starts
     RollPhase --> TurnForfeited: roll timer expires
-    RollPhase --> MovePhase: roll has legal moves
-    RollPhase --> NoLegalMoveNotice: roll has zero legal moves
+    RollPhase --> SpecialRollPhase: base roll accepted
     RollPhase --> TurnEnded: third consecutive six
+    SpecialRollPhase --> MovePhase: legal actions after special roll
+    SpecialRollPhase --> NoLegalMoveNotice: zero legal actions
+    SpecialRollPhase --> TurnForfeited: timer expires
     MovePhase --> MoveResolved: piece selected
     MovePhase --> TurnForfeited: move timer expires
     NoLegalMoveNotice --> TurnEnded: 5 seconds elapsed
@@ -177,7 +184,9 @@ The Turn Engine:
 - skips inactive colors by only including active players;
 - skips ranked players after completion;
 - tracks roll and move phases;
+- tracks the explicit normal-die and Special Die phases;
 - tracks consecutive sixes;
+- tracks forced base-six anti-stall markers for players trapped in Yard;
 - emits public event information consumed by the facade;
 - handles roll and move timeouts;
 - handles no-legal move notice completion.
@@ -213,6 +222,7 @@ Implemented domain services determine:
 - overshoot prevention;
 - capture eligibility;
 - protected-block behavior;
+- Hazard, Boost, Shield, and Backward Capture behavior;
 - bonus roll eligibility;
 - Triple Six cancellation;
 - ranking and match completion.
@@ -230,10 +240,14 @@ sequenceDiagram
 
     UI->>App: roll()
     App->>Turns: roll()
-    Turns->>Domain: validate dice, legal moves, triple-six state
-    Domain-->>Turns: event data
+    Turns->>Domain: validate base die and triple-six state
     Turns-->>App: TurnEvent
-    App-->>UI: FacadeResult + GameSnapshot
+    App-->>UI: base-roll FacadeResult + GameSnapshot
+    UI->>App: roll_special()
+    App->>Turns: roll_special()
+    Turns->>Domain: build legal base/base+2 actions
+    Turns-->>App: TurnEvent with legal actions
+    App-->>UI: special-roll FacadeResult + GameSnapshot
     UI->>App: choose_piece(piece_id)
     App->>Turns: select_piece(piece_id)
     Turns->>Domain: resolve move and collision
@@ -246,7 +260,9 @@ sequenceDiagram
 Randomness and time are injectable:
 
 - dice rolls use a `Dice` protocol with fixed and random implementations;
+- Special Die rolls use a separate injectable provider with fixed and random implementations;
 - color assignment uses `ColorRandomizer` with fixed and random implementations;
+- special-square layout generation uses injectable randomness;
 - timers use a `Clock` protocol;
 - UI-created facade matches use `PausableClock`;
 - tests supply deterministic providers.
@@ -318,8 +334,8 @@ line-length = 100
 
 Current baseline verification:
 
-- `uv run pytest`: passing.
-- `uv run pytest --cov`: above the configured 85% threshold.
+- `uv run pytest`: 1553 tests passed.
+- `uv run pytest --cov`: 86.63% coverage, above the configured 85% threshold.
 - `uv run ruff check .`: passing.
 
 ## Not Applicable For Current Baseline

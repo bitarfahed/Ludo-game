@@ -5,12 +5,12 @@ GIFs, and release media have not been added and must not be fabricated.
 
 ## UX Principles
 
-- Modern, clean, and readable desktop presentation.
+- Modern, clean, readable desktop presentation.
 - Classic Ludo structure with a restrained digital treatment.
 - Clear Red, Green, Yellow, and Blue player identity.
 - Multiple feedback cues instead of relying only on color.
 - Desktop mouse and keyboard first; mobile/touch is out of scope.
-- UI displays facade-provided state and never owns authoritative game rules.
+- UI consumes facade-provided state and never owns authoritative game rules.
 
 ## Implemented Screens
 
@@ -22,13 +22,13 @@ The Pygame application includes:
 - pause overlay;
 - final results.
 
-The application entry point is:
+Entry point:
 
 ```bash
 uv run python -m ludo.pygame_ui.main
 ```
 
-A smoke-launch mode also exists:
+Smoke launch:
 
 ```bash
 uv run python -m ludo.pygame_ui.main --smoke
@@ -48,79 +48,81 @@ Player setup provides:
 
 Color assignment happens when the match starts. Players do not manually choose colors.
 
-## Color Assignment Feedback
-
-When the match begins, each active player name is shown near the assigned Yard. Inactive colors
-remain visible as subdued board corners.
-
-- 2-player matches use a randomly selected opposite pair: Red/Yellow or Green/Blue.
-- 3-player matches use three random active colors.
-- 4-player matches use all colors.
-
 ## Board Presentation
 
 The board renderer displays:
 
-- the shared 52-square outer path;
-- four Yards;
+- the shared 52-square Outer Path;
+- all four Yard areas;
+- active and inactive player corners;
 - colored 5-square Home Paths;
-- safe/start markers;
-- star safe squares;
 - Finish regions;
-- a center dice area;
-- player label and timer areas.
+- Start/Safe markers;
+- star Safe Squares;
+- non-traversable dark center cells around Finish/Dice areas;
+- center normal-die and Special Die controls;
+- player name and timer areas;
+- Hazard markers;
+- Boost `+2` markers;
+- Shield Square markers.
 
 Logical board positions are mapped to screen coordinates by `BoardGeometry`. Screen geometry does
 not define game state.
 
-## Player And Yard Labels
+## Player Areas And Turn Feedback
 
 Each active player area shows:
 
 - player name;
 - active-player indication;
-- status such as finished-piece count or achieved rank;
+- finished-piece count or achieved rank;
 - timer when that player is active.
 
-Inactive corners are visually present but do not behave as gameplay participants.
+Current-player feedback combines:
 
-## Current Turn Feedback
-
-The current player is indicated through:
-
-- highlighted/current player text;
+- highlighted player text;
 - active Yard emphasis;
 - dice accent associated with the current color;
 - timer near the active player area;
 - legal-piece rings during move phase.
 
+Inactive corners are visible but subdued and do not behave as gameplay participants.
+
 ## Dice UX
 
-The dice is displayed in the center board area.
+The center board area contains separate controls for:
 
-Implemented states:
+- normal/base die;
+- Special Die.
 
-- rollable during roll phase;
-- disabled outside roll phase;
-- short dice-roll animation;
-- final authoritative dice value displayed after roll;
-- current-player accent when rollable.
+Implemented flow:
 
-Dice clicks are routed through `GameFacade`. The UI does not generate or decide dice values.
+1. During roll phase, the normal die is clickable.
+2. After a valid base roll, the Special Die becomes clickable.
+3. After the Special Die result, legal movement actions are shown.
 
-## Timer Presentation
+The dice displays authoritative values returned by `GameFacade`. The UI does not generate dice
+values or decide whether `+2` applies.
 
-The active player's timer shows:
+## Legal Destination `V` Markers
 
-- numeric seconds remaining;
-- a small progress bar.
+After dice resolution:
 
-Roll and move phases each use a 10-second decision window. Pause freezes the active timer and resume
-continues with the remaining time.
+- legal destinations are shown with compact `V` markers;
+- marker color corresponds to the active player;
+- markers are derived from facade legal actions, not UI-side movement calculation;
+- base and base-plus-2 destinations may both appear when both are legal;
+- Backward Capture destinations may appear;
+- clicking a marker submits the exact action id represented by that marker;
+- markers disappear once an action is selected;
+- markers are hidden while movement animation locks input;
+- no markers appear when no legal move exists.
+
+Players may also click a legal piece directly when the piece has only one legal action.
 
 ## Piece Representation
 
-Pieces are rendered as small circles with a color and compact letter identity:
+Pieces render as small circles with color and compact letter identity:
 
 ```text
 Red    -> r
@@ -129,12 +131,23 @@ Yellow -> y
 Blue   -> b
 ```
 
-Pieces are positioned through board geometry according to facade snapshots:
+Placement always goes through board geometry:
 
 - `IN_YARD` pieces use Yard slots;
 - `ON_OUTER_PATH` pieces use global outer squares;
 - `ON_HOME_PATH` pieces use private Home Path squares;
 - `FINISHED` pieces use the player's Finish region.
+
+Shielded pieces display an additional visual ring/indicator.
+
+## Special-Square Presentation
+
+- Hazards render with a distinct warning marker.
+- Boost Squares render with a visible `+2`.
+- Shield Squares render with a distinct Shield marker.
+- Existing Start/Safe and star Safe Square markers remain visible.
+- Legal destination `V` markers are not added to forced Hazard or Boost destinations unless those
+  destinations are independently legal actions.
 
 ## Stack Presentation
 
@@ -148,7 +161,7 @@ compact stack summary such as:
 ```
 
 Each summary component uses the corresponding player color. This covers same-color stacks, mixed
-protected blocks, large safe-square stacks, and multi-color occupancy.
+protected blocks, safe-square stacks, and multi-color occupancy.
 
 ## Hover Inspection
 
@@ -165,52 +178,38 @@ The popup also indicates:
 - `SAFE SQUARE` for safe-square occupancy;
 - `PROTECTED BLOCK` for ordinary protected occupancy.
 
-Hover inspection is visual-only and does not change game state.
+Popup placement stays within representative window bounds where practical. Hover inspection is
+visual-only and does not change game state.
 
-## Legal-Move Presentation
-
-After a roll with legal moves:
-
-- only legal pieces are selectable;
-- legal pieces receive a visible ring;
-- illegal pieces do not submit moves;
-- hovering a legal piece previews the facade-provided destination;
-- selecting a legal piece submits the move through `GameFacade`.
-
-The UI does not recalculate legal movement.
-
-## Movement Animation
+## Movement, Capture, And Finish Animation
 
 Resolved moves animate through facade-provided route steps. The renderer interpolates from the
-piece's current source square to each authoritative route step, so a dice result of `N` displays
-exactly `N` visible movement progressions.
+piece's source square to each authoritative route step.
 
-Outer Path to Home Path and finish transitions are represented by route snapshots from the facade.
+- A dice result of `N` displays exactly `N` movement progressions for the selected movement value.
+- Special Die `+2`, Hazard penalty, and Boost displacement route additions are produced by facade
+  state.
+- Outer Path to Home Path and Finish transitions are represented by route snapshots.
+- Capture feedback is non-blocking and presentation-only.
+- Finish feedback uses a brief pulse.
 
-## Capture Animation
+The domain/facade resolves all move effects before animation begins.
 
-Capture feedback is non-blocking and presentation-only:
+## Timer And No-Legal Feedback
 
-1. the moving piece reaches the destination;
-2. the captured piece receives brief feedback;
-3. the captured piece returns visually to Yard.
+The active player's timer shows:
 
-The domain/facade already resolved the capture before animation begins.
+- numeric seconds remaining;
+- a progress bar.
 
-## Finish And Ranking Feedback
+Roll, Special Die, and move phases each use a 10-second decision window. Pause freezes the
+UI-created clock and resume continues with the remaining time.
 
-Finished pieces appear in the player's Finish region and are no longer selectable.
+If a roll has no legal actions after the Special Die step, the game shows a `NO LEGAL MOVE`
+feedback message with a countdown. Input is blocked for the notice window, and the turn passes
+automatically after 5 seconds.
 
-When a player finishes all four pieces, the UI displays brief ranking feedback. Ranked players are
-skipped by the turn engine. When only one unranked player remains, final ranking is assigned
-automatically and the UI transitions to results.
-
-## No-Legal-Move Feedback
-
-If a roll has no legal moves, the game shows a `NO LEGAL MOVE` feedback message with a countdown.
-Input is blocked for the notice window, and the turn passes automatically after 5 seconds.
-
-## Pause UX
+## Pause And Results
 
 `ESC` toggles pause.
 
@@ -230,12 +229,7 @@ Main Menu
 Quit
 ```
 
-Restart Match, Main Menu, and Play Again reset presentation state so stale animations, hover state,
-and prior facade results do not leak into the next flow.
-
-## Final Results Screen
-
-At match completion, final rankings are shown in rank order. The screen provides:
+At match completion, final rankings are shown in rank order. The final results screen provides:
 
 - Play Again;
 - Main Menu;
@@ -252,15 +246,21 @@ The audio layer provides generated placeholder tones for:
 - move;
 - capture;
 - finish;
+- Hazard;
+- Boost;
+- Shield acquired;
+- Shield broken;
 - ranking.
 
-Audio uses configurable volumes and includes a no-op fallback path.
+Audio uses configurable volumes and includes a no-op fallback path. No copyrighted audio assets are
+included.
 
 ## Accessibility And Readability
 
 - UI does not rely exclusively on color.
 - Pieces use letters as well as color.
 - Active player is communicated through text, highlight, dice accent, and timer placement.
+- Legal pieces and legal destinations are visually distinguished.
 - Stack summaries remain compact, with hover inspection for details.
 - Animations are restrained and non-blocking.
 
@@ -271,11 +271,13 @@ Audio uses configurable volumes and includes a no-op fallback path.
 - name entry;
 - match start with assigned colors;
 - roll phase;
-- dice rolling;
+- normal die rolling;
+- Special Die phase;
 - move selection phase;
-- legal-piece hover preview;
+- legal-piece and legal-destination hover preview;
 - no-legal-move notification;
 - move animation;
+- Hazard/Boost/Shield feedback;
 - capture animation;
 - finish feedback;
 - player ranked;
@@ -285,7 +287,8 @@ Audio uses configurable volumes and includes a no-op fallback path.
 ## Not Implemented
 
 - online/networked play;
+- Bot/AI players;
 - mobile/touch-specific UI;
 - screenshots/GIFs in documentation;
 - curated licensed audio assets;
-- experimental gameplay expansions outside the current rules baseline.
+- Portal, Double-or-Nothing, Coins/Shop, Time Crystal/Undo, or Split Dice systems.

@@ -15,7 +15,7 @@ Default owner: Developer / Codex-assisted.
 | Create initial README | Complete | High | Developer / Codex-assisted | None | README accurately states the current playable baseline and links documentation. |
 | Create PRD | Complete | High | Developer / Codex-assisted | None | Product requirements, scope, goals, constraints, and milestones documented. |
 | Create rules specification | Complete | High | Developer / Codex-assisted | None | Authoritative gameplay rules and critical test scenarios documented. |
-| Create UX design document | Complete | High | Developer / Codex-assisted | None | Planned screens, interactions, feedback, and accessibility notes documented. |
+| Create UX design document | Complete | High | Developer / Codex-assisted | None | Current screens, interactions, feedback, and accessibility notes documented. |
 | Create architecture plan | Complete | High | Developer / Codex-assisted | None | Architecture boundaries, diagrams, SDK facade, testing strategy, and ADRs documented. |
 | Create prompts book | Complete | Medium | Developer / Codex-assisted | None | Prompt 0 is recorded and reusable entry format exists. |
 | Review and approve documentation | Complete | High | Developer / Codex-assisted | Documentation package | Human reviewer accepts docs or requests revisions. |
@@ -107,7 +107,7 @@ Default owner: Developer / Codex-assisted.
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
 | Implement Special Bonus Die | Complete | High | Developer / Codex-assisted | Turn engine and facade | Base roll, special bonus, effective movement, fallback, and Triple-Six interactions are tested. |
-| Implement Hazard Squares | Complete | High | Developer / Codex-assisted | Board topology and collision rules | Four fixed match hazards, two-step penalty, collision after penalty, and facade exposure are tested. |
+| Implement Hazard Squares | Complete | High | Developer / Codex-assisted | Board topology and collision rules | Eight fixed-per-match hazards, two-step penalty, Start clamping, collision after penalty, and facade exposure are tested. |
 | Implement Backward Capture | Complete | High | Developer / Codex-assisted | Occupancy/capture rules | Capture-only backward actions, action disambiguation, and capture bonus behavior are tested. |
 
 ## Gameplay Fix: Dice Flow, Yard Release, Home Entry, and Action UX
@@ -129,7 +129,7 @@ Default owner: Developer / Codex-assisted.
 | Render legal destination markers | Complete | High | Developer / Codex-assisted | Facade legal moves | UI derives `V` markers from facade legal actions for base, bonus, and backward-capture destinations. |
 | Support destination-oriented selection | Complete | High | Developer / Codex-assisted | Interaction layer | Clicking a legal destination resolves the action ID that produced that marker and clears markers after selection. |
 | Mark center cells non-traversable | Complete | Medium | Developer / Codex-assisted | Board renderer | Non-playable center cells around Finish regions are dark and separate from Outer/Home/Finish/Dice cells. |
-| Preserve hazard/safe compatibility | Complete | High | Developer / Codex-assisted | Hazard generation | Hazards remain one per sector and do not overlap corrected safe/start squares. |
+| Preserve hazard/safe compatibility | Complete | High | Developer / Codex-assisted | Hazard generation | Hazards remain two per sector and do not overlap corrected safe/start squares. |
 
 ## Board Expansion: Hazards, Boost Squares, and Shields
 

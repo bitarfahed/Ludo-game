@@ -35,7 +35,7 @@ application consumes public facade snapshots and commands.
 ## Measurable Quality Goals
 
 - Global automated coverage target: `>= 85%`.
-- Current baseline coverage: 86.82% from `uv run pytest --cov`.
+- Current baseline coverage: 86.63% from `uv run pytest --cov`.
 - `uv run ruff check .` passes with 0 violations.
 - Ruff line length is 100.
 - Public domain/application operations have unit or integration coverage.
@@ -54,11 +54,14 @@ application consumes public facade snapshots and commands.
 - Inactive colors have no pieces, turns, timers, dice interaction, or progress.
 - Active players each own 4 pieces.
 - Gameplay follows the rules in [PRD_GAME_RULES.md](PRD_GAME_RULES.md).
+- Current custom gameplay systems include the explicit normal die plus Special Die flow, forced
+  Yard-release anti-stall behavior, Hazard Squares, Boost Squares, Shield Squares, and Backward
+  Capture.
 - Current player, dice phase, legal moves, timer state, no-legal-move feedback, rankings, and final
   results are visible to players.
-- Players roll the center dice during roll phase and select highlighted legal pieces during move
-  phase.
-- Hovering legal pieces previews the destination.
+- Players roll the center normal die, then explicitly roll the Special Die.
+- Players select highlighted legal pieces or click legal destination `V` markers during move phase.
+- Hovering legal actions previews the destination.
 - Hovering occupied outer squares shows stack inspection details.
 - `ESC` pauses the game and stops timers, input, and animations until resumed.
 - Pause supports Resume, Restart Match, Main Menu, and Quit.
@@ -143,8 +146,8 @@ Completed:
 3. Legal movement, capture, blocks, bonus rolls, timers, Triple Six, and ranking.
 4. Application/SDK facade with immutable public snapshots and command results.
 5. Pygame shell, screen flow, board geometry, rendering, input, and HUD.
-6. Stack/hover UX, legal-move UX, animations, audio, no-legal feedback, pause, restart, and final
-   results.
+6. Stack/hover UX, legal-destination `V` markers, animations, audio, no-legal feedback, pause,
+   restart, and final results.
 7. Automated test and Ruff verification above the configured coverage threshold.
 
 Still not completed:
@@ -152,4 +155,5 @@ Still not completed:
 - Screenshots/GIFs and release media.
 - License and third-party attribution.
 - Release packaging/tagging.
-- Online, networking, external services, and experimental gameplay expansions.
+- Online, networking, external services, Bot/AI players, Portal, Double-or-Nothing, Coins/Shop,
+  Time Crystal/Undo, and Split Dice systems.
