@@ -2176,6 +2176,70 @@ Lessons learned:
 - A final QA pass is most useful when it adds narrow guardrails around cross-system invariants
   rather than polishing working code for its own sake.
 
+## Final Release Cleanup — Portfolio V1
+
+Prompt ID: Final Release Cleanup Portfolio V1
+
+Title: Final Release Cleanup For Portfolio V1
+
+Goal: Perform a small final release-cleanup pass focused on metadata, license, README wording, and
+release-readiness documentation without changing gameplay, architecture, screenshots, tags, or
+version numbers.
+
+Context: The game had already completed final QA and was in a playable portfolio-ready state, with
+only small release paperwork and stale wording remaining.
+
+Full prompt or faithful prompt record: The final release-cleanup prompt was provided as an attached
+pasted text file. Its authoritative requirements included:
+
+- update stale `pyproject.toml` description language if needed;
+- correct `docs/TODO.md` statuses for current testing/lint/license state;
+- add a standard MIT `LICENSE` with the current year and a reliably supported copyright holder;
+- replace temporary README verification wording with durable baseline wording;
+- add a concise README license section;
+- perform a lightweight stale-language audit without rewriting historical prompt entries;
+- append this task to the prompts book;
+- do not add screenshots/GIFs, change version, create tags, or modify gameplay/rules code;
+- run `uv sync`, `uv run ruff check .`, `uv run pytest`, and `uv run pytest --cov`.
+
+Files expected to change:
+
+- `pyproject.toml`
+- `LICENSE`
+- `README.md`
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+
+Constraints:
+
+- Do not perform gameplay, rules, architecture, or UI changes.
+- Do not fabricate screenshots, media, manual verification, or release tags.
+- Do not rewrite historical prompt entries.
+
+Verification performed:
+
+- Confirmed repository identity from the GitHub remote and local git author configuration.
+- Updated package description, README verification baseline wording, README license section, and
+  TODO license status.
+- Added a standard MIT license file.
+- Audited current README/TODO/metadata wording for stale planned-release language.
+- Ran `uv sync`: passed.
+- Ran `uv run ruff check .`: all checks passed.
+- Ran `uv run pytest`: passed.
+- Ran `uv run pytest --cov`: passed with coverage above the configured 85% threshold.
+
+Result summary:
+
+- The repository now has explicit MIT licensing and README license linkage.
+- Package metadata no longer uses narrow local-only wording.
+- Remaining planned work is optional portfolio polish such as screenshots/GIFs, attribution,
+  diagrams, packaging, or release tagging.
+
+Lessons learned:
+
+- Release cleanup should distinguish durable current-state wording from historical prompt records,
+  which remain valuable as implementation history.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

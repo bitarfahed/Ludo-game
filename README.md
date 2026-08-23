@@ -120,7 +120,7 @@ uv run pytest --cov
 uv run ruff check .
 ```
 
-Current verification from this documentation update:
+Current verification baseline:
 
 - `uv run pytest`: 1556 tests passed.
 - `uv run pytest --cov`: 86.63% total coverage.
@@ -167,8 +167,10 @@ tests/
 
 The current game does not include online play, accounts, databases, external APIs, Bot/AI players,
 networking, Portal, Double-or-Nothing, Coins/Shop, Time Crystal/Undo, Split Dice, screenshots/GIFs,
-release packaging, or final license/asset attribution.
+release packaging, or final asset attribution.
 
-## License And Credits
+## License
 
-License, third-party attribution, and final asset credits are still release-preparation tasks.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+Third-party attribution and final asset credits remain release-preparation polish.
