@@ -121,4 +121,14 @@ Default owner: Developer / Codex-assisted.
 | Correct Home-entry geometry | Complete | High | Developer / Codex-assisted | Board geometry | All four Outer Path to Home Path entries are visually continuous while preserving 52 outer squares. |
 | Clarify multi-action selection UX | Complete | Medium | Developer / Codex-assisted | Backward Capture | Same-piece forward/backward actions remain selectable by explicit destination/action ID. |
 
+## Visual Clarity Fix: Start Safe Squares, Legal Destinations, and Center Cells
+
+| Task | Status | Priority | Owner | Dependencies | Definition of Done |
+| --- | --- | --- | --- | --- | --- |
+| Lock Start/Safe visual alignment | Complete | High | Developer / Codex-assisted | Board topology and geometry | Yard release, start index, safe square, and visual marker all reference the same square for each color. |
+| Render legal destination markers | Complete | High | Developer / Codex-assisted | Facade legal moves | UI derives `V` markers from facade legal actions for base, bonus, and backward-capture destinations. |
+| Support destination-oriented selection | Complete | High | Developer / Codex-assisted | Interaction layer | Clicking a legal destination resolves the action ID that produced that marker and clears markers after selection. |
+| Mark center cells non-traversable | Complete | Medium | Developer / Codex-assisted | Board renderer | Non-playable center cells around Finish regions are dark and separate from Outer/Home/Finish/Dice cells. |
+| Preserve hazard/safe compatibility | Complete | High | Developer / Codex-assisted | Hazard generation | Hazards remain one per sector and do not overlap corrected safe/start squares. |
+
 Remaining planned work is release/documentation polish, not core gameplay implementation.

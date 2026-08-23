@@ -84,6 +84,18 @@ def test_start_positions_map_to_outer_squares() -> None:
         assert geometry.outer_square(start_index) == geometry.safe_squares[start_index]
 
 
+def test_visual_start_safe_markers_match_yard_release_destinations() -> None:
+    geometry = BoardGeometry()
+
+    for color in PlayerColor:
+        start_index = geometry.topology.start_position(color)
+        release_destination = geometry.topology.global_outer_index(color, 0)
+
+        assert release_destination == start_index
+        assert start_index in geometry.safe_squares
+        assert geometry.outer_square(release_destination) == geometry.safe_squares[start_index]
+
+
 def test_outer_to_home_entry_is_geometrically_continuous_for_every_color() -> None:
     geometry = BoardGeometry()
 
@@ -109,6 +121,24 @@ def test_required_board_regions_are_inside_board_or_window() -> None:
         assert board.contains(geometry.timer_area(color).center)
         assert len(geometry.yard_piece_positions(color)) == 4
     assert board.contains(geometry.center_dice_area.center)
+
+
+def test_non_traversable_center_cells_are_separate_from_required_regions() -> None:
+    geometry = BoardGeometry()
+    blocked_centers = {rect.center for rect in geometry.non_traversable_center_cells}
+    playable_centers = {
+        *(rect.center for rect in geometry.outer_squares.values()),
+        *(
+            geometry.home_path_square(color, index).center
+            for color in PlayerColor
+            for index in range(5)
+        ),
+        *(geometry.finish_region(color).center for color in PlayerColor),
+        geometry.center_dice_area.center,
+    }
+
+    assert len(blocked_centers) == 4
+    assert blocked_centers.isdisjoint(playable_centers)
 
 
 def test_hit_testing_outer_square_from_representative_center() -> None:

@@ -29,6 +29,7 @@ class BoardRenderer:
         self._draw_yards(surface, snapshot, font)
         self._draw_outer_path(surface, snapshot, font)
         self._draw_home_paths(surface)
+        self._draw_non_traversable_center_cells(surface)
         self._draw_finish_regions(surface, small_font)
         self._draw_center_dice_area(surface, small_font)
 
@@ -94,6 +95,11 @@ class BoardRenderer:
             pygame.draw.rect(surface, _color(color), _to_pygame_rect(rect))
             label = small_font.render("F", True, theme.SURFACE)
             surface.blit(label, label.get_rect(center=rect.center))
+
+    def _draw_non_traversable_center_cells(self, surface: pygame.Surface) -> None:
+        for rect in self.geometry.non_traversable_center_cells:
+            pygame.draw.rect(surface, theme.TEXT, _to_pygame_rect(rect))
+            pygame.draw.rect(surface, theme.BORDER, _to_pygame_rect(rect), width=1)
 
     def _draw_center_dice_area(self, surface: pygame.Surface, small_font: pygame.font.Font) -> None:
         rect = self.geometry.center_dice_area

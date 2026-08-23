@@ -83,3 +83,10 @@ FINISH_GRIDS = {
     PlayerColor.YELLOW: (8, 7),
     PlayerColor.BLUE: (7, 8),
 }
+
+CENTER_NON_TRAVERSABLE_GRIDS = (
+    (6, 6),
+    (8, 6),
+    (6, 8),
+    (8, 8),
+)

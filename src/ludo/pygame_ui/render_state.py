@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
-from ludo.app import GameSnapshot, OuterOccupancySnapshot, PieceSnapshot, PlayerSnapshot
+from ludo.app import (
+    GameSnapshot,
+    LegalMoveSnapshot,
+    OuterOccupancySnapshot,
+    PieceSnapshot,
+    PlayerSnapshot,
+)
+from ludo.domain.movement import MoveDestinationKind
 from ludo.domain.pieces import PieceState
 from ludo.domain.players import PIECES_PER_PLAYER
 from ludo.domain.turns import TurnPhase
 from ludo.geometry import BoardGeometry, ScreenRect
 from ludo.pygame_ui import theme
 from ludo.pygame_ui.render_models import (
+    DestinationMarkerState,
     DiceHudState,
     GameplayRenderState,
     OccupancyInspection,
@@ -38,6 +46,7 @@ def build_gameplay_render_state(
         pieces=groups,
         dice=_dice_state(snapshot, geometry),
         players=tuple(_player_hud(player, snapshot, geometry) for player in snapshot.players),
+        destination_markers=_destination_markers(snapshot, geometry),
     )
 
 
@@ -122,6 +131,45 @@ def _dice_state(snapshot: GameSnapshot, geometry: BoardGeometry) -> DiceHudState
         ),
         accent_color=theme.color_for_name(current_color),
     )
+
+
+def _destination_markers(
+    snapshot: GameSnapshot, geometry: BoardGeometry
+) -> tuple[DestinationMarkerState, ...]:
+    if snapshot.phase is not TurnPhase.WAITING_FOR_MOVE or snapshot.current_player is None:
+        return ()
+    return tuple(
+        DestinationMarkerState(
+            piece_id=move.piece_id,
+            action_id=move.action_id,
+            bounds=bounds,
+            color_value=snapshot.current_player.color.value,
+            movement_value=move.movement_value,
+            action_kind=move.action_kind.value,
+        )
+        for move in snapshot.legal_moves
+        if (bounds := _destination_bounds(move, geometry)) is not None
+    )
+
+
+def _destination_bounds(
+    move: LegalMoveSnapshot, geometry: BoardGeometry
+) -> ScreenRect | None:
+    destination = move.destination
+    if (
+        destination.kind is MoveDestinationKind.OUTER_PATH
+        and destination.global_outer_index is not None
+    ):
+        return geometry.outer_square(destination.global_outer_index)
+    if (
+        destination.kind is MoveDestinationKind.HOME_PATH
+        and destination.home_color is not None
+        and destination.home_index is not None
+    ):
+        return geometry.home_path_square(destination.home_color, destination.home_index)
+    if destination.kind is MoveDestinationKind.FINISHED and destination.home_color is not None:
+        return geometry.finish_region(destination.home_color)
+    return None
 
 
 def _player_hud(

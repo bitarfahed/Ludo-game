@@ -1,8 +1,18 @@
 """Tests for gameplay render-state preparation."""
 
-from ludo.app import GameSnapshot, OuterOccupancySnapshot, PieceSnapshot, PlayerSnapshot
-from ludo.domain import PieceState, PlayerColor, TurnPhase
+from ludo.app import (
+    GameSnapshot,
+    LegalMoveSnapshot,
+    MoveDestinationSnapshot,
+    OuterOccupancySnapshot,
+    PieceSnapshot,
+    PlayerSnapshot,
+)
+from ludo.domain import MoveActionKind, PieceState, PlayerColor, TurnPhase
+from ludo.domain.movement import MoveDestinationKind
 from ludo.geometry import BoardGeometry
+from ludo.pygame_ui.animation import AnimationManager
+from ludo.pygame_ui.gameplay_renderer import _visible_destination_markers
 from ludo.pygame_ui.render_models import PieceLocationKind
 from ludo.pygame_ui.render_state import (
     build_gameplay_render_state,
@@ -35,6 +45,7 @@ def snapshot(
     dice_value: int | None = None,
     seconds_remaining: int = 7,
     outer_occupancies: tuple[OuterOccupancySnapshot, ...] = (),
+    legal_moves: tuple[LegalMoveSnapshot, ...] = (),
 ) -> GameSnapshot:
     return GameSnapshot(
         players=players,
@@ -44,7 +55,7 @@ def snapshot(
         seconds_remaining=seconds_remaining,
         decision_timeout_seconds=10,
         current_dice_value=dice_value,
-        legal_moves=(),
+        legal_moves=legal_moves,
         outer_occupancies=outer_occupancies,
         rankings=(),
         is_complete=False,
@@ -61,6 +72,28 @@ def outer_piece(piece_id: str, color: PlayerColor, global_index: int) -> PieceSn
         color,
         PieceState.ON_OUTER_PATH,
         progress_to_global(color, global_index),
+    )
+
+
+def legal_move(
+    *,
+    piece_id: str = "red-1",
+    destination: MoveDestinationSnapshot,
+    action_id: str = "red-1:forward:4",
+    movement_value: int = 4,
+    action_kind: MoveActionKind = MoveActionKind.FORWARD,
+) -> LegalMoveSnapshot:
+    return LegalMoveSnapshot(
+        piece_id=piece_id,
+        owner_color=PlayerColor.RED,
+        state=PieceState.ON_OUTER_PATH,
+        path_progress=0,
+        dice_value=4,
+        destination=destination,
+        route=(),
+        action_id=action_id,
+        action_kind=action_kind,
+        movement_value=movement_value,
     )
 
 
@@ -344,3 +377,123 @@ def test_inactive_players_are_not_rendered_as_active_participants() -> None:
     state = build_gameplay_render_state(snapshot((red,), red), BoardGeometry())
 
     assert [player_state.color_value for player_state in state.players] == ["red"]
+
+
+def test_legal_actions_produce_destination_markers_with_action_mapping() -> None:
+    geometry = BoardGeometry()
+    red = player("red", PlayerColor.RED, (piece("red-1", PlayerColor.RED),))
+    move = legal_move(
+        destination=MoveDestinationSnapshot(MoveDestinationKind.OUTER_PATH, global_outer_index=4)
+    )
+
+    state = build_gameplay_render_state(
+        snapshot(
+            (red,),
+            red,
+            phase=TurnPhase.WAITING_FOR_MOVE,
+            dice_value=4,
+            legal_moves=(move,),
+        ),
+        geometry,
+    )
+
+    assert len(state.destination_markers) == 1
+    marker = state.destination_markers[0]
+    assert marker.bounds == geometry.outer_square(4)
+    assert marker.action_id == "red-1:forward:4"
+    assert marker.piece_id == "red-1"
+    assert marker.color_value == "red"
+
+
+def test_base_and_bonus_legal_actions_both_produce_destination_markers() -> None:
+    geometry = BoardGeometry()
+    red = player("red", PlayerColor.RED, (piece("red-1", PlayerColor.RED),))
+    base = legal_move(
+        destination=MoveDestinationSnapshot(MoveDestinationKind.OUTER_PATH, global_outer_index=4)
+    )
+    bonus = legal_move(
+        destination=MoveDestinationSnapshot(MoveDestinationKind.OUTER_PATH, global_outer_index=6),
+        action_id="red-1:forward:6",
+        movement_value=6,
+    )
+
+    state = build_gameplay_render_state(
+        snapshot(
+            (red,),
+            red,
+            phase=TurnPhase.WAITING_FOR_MOVE,
+            dice_value=4,
+            legal_moves=(base, bonus),
+        ),
+        geometry,
+    )
+
+    assert {marker.bounds for marker in state.destination_markers} == {
+        geometry.outer_square(4),
+        geometry.outer_square(6),
+    }
+
+
+def test_backward_capture_legal_action_produces_destination_marker() -> None:
+    geometry = BoardGeometry()
+    red = player("red", PlayerColor.RED, (piece("red-1", PlayerColor.RED),))
+    backward = legal_move(
+        destination=MoveDestinationSnapshot(MoveDestinationKind.OUTER_PATH, global_outer_index=50),
+        action_id="red-1:backward_capture:4",
+        action_kind=MoveActionKind.BACKWARD_CAPTURE,
+    )
+
+    state = build_gameplay_render_state(
+        snapshot(
+            (red,),
+            red,
+            phase=TurnPhase.WAITING_FOR_MOVE,
+            dice_value=4,
+            legal_moves=(backward,),
+        ),
+        geometry,
+    )
+
+    assert state.destination_markers[0].bounds == geometry.outer_square(50)
+    assert state.destination_markers[0].action_id == "red-1:backward_capture:4"
+
+
+def test_no_destination_markers_when_no_legal_moves_or_not_move_phase() -> None:
+    red = player("red", PlayerColor.RED, (piece("red-1", PlayerColor.RED),))
+    move = legal_move(
+        destination=MoveDestinationSnapshot(MoveDestinationKind.OUTER_PATH, global_outer_index=4)
+    )
+
+    no_moves = build_gameplay_render_state(
+        snapshot((red,), red, phase=TurnPhase.WAITING_FOR_MOVE),
+        BoardGeometry(),
+    )
+    roll_phase = build_gameplay_render_state(
+        snapshot((red,), red, legal_moves=(move,)),
+        BoardGeometry(),
+    )
+
+    assert no_moves.destination_markers == ()
+    assert roll_phase.destination_markers == ()
+
+
+def test_destination_markers_are_hidden_during_animation_lock() -> None:
+    red = player("red", PlayerColor.RED, (piece("red-1", PlayerColor.RED),))
+    move = legal_move(
+        destination=MoveDestinationSnapshot(MoveDestinationKind.OUTER_PATH, global_outer_index=4)
+    )
+    state = build_gameplay_render_state(
+        snapshot(
+            (red,),
+            red,
+            phase=TurnPhase.WAITING_FOR_MOVE,
+            dice_value=4,
+            legal_moves=(move,),
+        ),
+        BoardGeometry(),
+    )
+    animation = AnimationManager()
+    animation.start_dice(4)
+
+    assert state.destination_markers
+    assert _visible_destination_markers(state, animation) == ()

@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 from ludo.domain import (
+    BoardTopology,
     FixedClock,
     FixedDice,
     FixedHazardRandomizer,
@@ -198,6 +199,7 @@ def test_hazard_generation_has_one_per_sector_and_no_safe_overlap() -> None:
 
     assert hazards == frozenset({1, 14, 27, 40})
     assert {hazard // 13 for hazard in hazards} == {0, 1, 2, 3}
+    assert hazards.isdisjoint(BoardTopology().safe_outer_positions)
 
 
 def test_match_exposes_fixed_hazard_positions() -> None:

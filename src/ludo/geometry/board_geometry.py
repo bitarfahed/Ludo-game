@@ -8,6 +8,7 @@ from enum import StrEnum
 from ludo.domain.board import HOME_PATH_LENGTH, OUTER_PATH_LENGTH, BoardTopology
 from ludo.domain.colors import PlayerColor
 from ludo.geometry.grid import (
+    CENTER_NON_TRAVERSABLE_GRIDS,
     DEFAULT_BOARD_SIZE,
     DEFAULT_WINDOW_SIZE,
     FINISH_GRIDS,
@@ -141,6 +142,11 @@ class BoardGeometry:
         """Return a color's Finished region."""
         column, row = FINISH_GRIDS[color]
         return self._grid_rect(column, row)
+
+    @property
+    def non_traversable_center_cells(self) -> tuple[ScreenRect, ...]:
+        """Return center cells that are decorative/non-playable, not path destinations."""
+        return tuple(self._grid_rect(column, row) for column, row in CENTER_NON_TRAVERSABLE_GRIDS)
 
     @property
     def center_dice_area(self) -> ScreenRect:

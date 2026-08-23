@@ -18,6 +18,7 @@ from ludo.domain.match import FixedColorRandomizer
 from ludo.geometry import BoardGeometry
 from ludo.pygame_ui.animation import AnimationManager
 from ludo.pygame_ui.interaction import GameplayInteractionController
+from ludo.pygame_ui.render_state import build_gameplay_render_state
 from ludo.pygame_ui.state import ScreenController, ScreenState
 
 
@@ -116,6 +117,26 @@ def test_legal_piece_click_submits_move_and_updates_ui_state() -> None:
     assert moved.state is PieceState.ON_OUTER_PATH
     assert moved.path_progress == 0
     assert controller.facade.snapshot().phase is TurnPhase.WAITING_FOR_ROLL
+
+
+def test_legal_destination_click_submits_action_and_clears_markers() -> None:
+    geometry = BoardGeometry()
+    interaction = GameplayInteractionController(geometry)
+    controller = controller_with_one_legal_outer_piece()
+
+    click_to_move_phase(interaction, geometry, controller)
+    snapshot = controller.facade.snapshot()
+    marker_state = build_gameplay_render_state(snapshot, geometry)
+    destination = marker_state.destination_markers[0].bounds.center
+
+    assert interaction.handle_click(destination, controller)
+
+    moved = controller.facade.piece_state("red-outer")
+    assert moved.path_progress == 3
+    assert controller.facade.snapshot().legal_moves == ()
+    assert build_gameplay_render_state(
+        controller.facade.snapshot(), geometry
+    ).destination_markers == ()
 
 
 def test_invalid_piece_click_and_outside_click_are_harmless() -> None:

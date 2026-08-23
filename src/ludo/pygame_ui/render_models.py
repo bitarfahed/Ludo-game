@@ -108,6 +108,18 @@ class DiceHudState:
 
 
 @dataclass(frozen=True, slots=True)
+class DestinationMarkerState:
+    """Draw-ready legal destination marker derived from facade legal moves."""
+
+    piece_id: str
+    action_id: str
+    bounds: ScreenRect
+    color_value: str
+    movement_value: int
+    action_kind: str
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerHudState:
     """Compact player HUD state near one Yard."""
 
@@ -129,3 +141,4 @@ class GameplayRenderState:
     pieces: tuple[PieceRenderGroup, ...]
     dice: DiceHudState
     players: tuple[PlayerHudState, ...]
+    destination_markers: tuple[DestinationMarkerState, ...]

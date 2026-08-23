@@ -11,6 +11,7 @@ from ludo.pygame_ui import theme
 from ludo.pygame_ui.animation import AnimationManager, CaptureAnimation
 from ludo.pygame_ui.interaction import DestinationPreview
 from ludo.pygame_ui.render_models import (
+    DestinationMarkerState,
     DiceHudState,
     GameplayRenderState,
     OccupancyInspection,
@@ -47,6 +48,9 @@ class GameplayRenderer:
             self._draw_destination_preview(surface, preview, small_font)
         self._draw_pieces(surface, state, font, small_font, animation)
         self._draw_legal_piece_rings(surface, state, snapshot)
+        self._draw_destination_markers(
+            surface, _visible_destination_markers(state, animation), font
+        )
         if animation is not None:
             self._draw_animation_overlay(surface, animation, font)
         if inspection is not None:
@@ -227,6 +231,22 @@ class GameplayRenderer:
             pygame.draw.circle(surface, theme.ACCENT_DARK, group.center, radius, width=3)
 
     @staticmethod
+    def _draw_destination_markers(
+        surface: pygame.Surface,
+        markers: tuple[DestinationMarkerState, ...],
+        font: pygame.font.Font,
+    ) -> None:
+        for marker in markers:
+            color = theme.color_for_name(marker.color_value)
+            rect = _to_pygame_rect(marker.bounds)
+            badge = pygame.Rect(0, 0, max(18, rect.width // 2), max(18, rect.height // 2))
+            badge.center = rect.center
+            pygame.draw.rect(surface, theme.SURFACE, badge, border_radius=4)
+            pygame.draw.rect(surface, color, badge, width=2, border_radius=4)
+            label = font.render("V", True, color)
+            surface.blit(label, label.get_rect(center=badge.center))
+
+    @staticmethod
     def _draw_destination_preview(
         surface: pygame.Surface,
         preview: DestinationPreview,
@@ -372,3 +392,12 @@ def _lerp_point(
 
 def _to_pygame_rect(rect: ScreenRect) -> pygame.Rect:
     return pygame.Rect(rect.x, rect.y, rect.width, rect.height)
+
+
+def _visible_destination_markers(
+    state: GameplayRenderState, animation: AnimationManager | None
+) -> tuple[DestinationMarkerState, ...]:
+    """Return legal destination markers that should be visible right now."""
+    if animation is not None and animation.input_locked:
+        return ()
+    return state.destination_markers

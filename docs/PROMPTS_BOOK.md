@@ -1758,6 +1758,94 @@ Lessons learned:
 - Optional movement modifiers need to be represented as legal actions, not as a single approved
   movement value chosen during dice resolution.
 
+## Visual Clarity Fix — Start Safe Squares, Legal Destinations & Center Cells
+
+Prompt ID: Visual Clarity Fix
+
+Title: Start Safe Squares, Legal Destinations & Center Cells
+
+Goal: Improve board readability and move selection without changing gameplay rules: lock Start/Safe
+visual alignment, show legal destination `V` markers, support destination-oriented action
+selection, and make non-traversable center cells visually distinct.
+
+Context: Manual playtesting found that players could misread Start/Safe squares, legal landing
+destinations, and central Finish-adjacent cells. The game already had facade-provided legal actions,
+two-dice flow, hazards, backward capture, and corrected Outer Path to Home Path geometry.
+
+Full prompt or faithful prompt record: The visual-clarity prompt was provided as an attached pasted
+text file. Its authoritative requirements included:
+
+- ensure Yard release destination, player start index, Start/Safe membership, and visual Start/Safe
+  marker identify the same square for all four colors;
+- preserve exactly eight unique Safe Squares and Hazard exclusion from all Safe Squares;
+- render a visible active-color `V` marker on every facade-exposed legal destination;
+- include base, `base + 2`, and Backward Capture destinations when legal;
+- allow clicking the legal destination to execute the exact action ID that produced the marker;
+- clear markers immediately after move selection and hide markers during animation;
+- make center cells that are not Outer Path, Home Path, Finish, or dice visibly non-traversable;
+- avoid altering the 52-square topology, movement distance, hazards, capture/block rules, timers,
+  ranking, audio behavior, or bonus probabilities;
+- update only `docs/TODO.md` and this prompts book;
+- run `uv sync`, `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- manually inspect all four player sides where practical without fabricating checks.
+
+Files expected to change:
+
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `src/ludo/geometry/board_geometry.py`
+- `src/ludo/geometry/grid.py`
+- `src/ludo/pygame_ui/board_renderer.py`
+- `src/ludo/pygame_ui/gameplay_renderer.py`
+- `src/ludo/pygame_ui/render_models.py`
+- `src/ludo/pygame_ui/render_state.py`
+- affected tests under `tests/`
+
+Constraints:
+
+- Do not change gameplay rules or topology counts.
+- Do not calculate legality in Pygame.
+- Do not add screenshot-comparison tests.
+- Do not perform the final documentation rewrite.
+
+Verification performed:
+
+- Added tests for Start/Safe/Yard-release visual alignment, non-traversable center-cell
+  classification, legal destination marker generation, base and `+2` marker coverage, Backward
+  Capture marker coverage, destination-click action execution, marker clearing, marker suppression
+  during animation, and Hazard exclusion from safe squares.
+- Ran `uv run pytest`: 1514 passed.
+- Final verification to run: `uv sync`, `uv run pytest --cov`, `uv run ruff check .`, and practical
+  smoke/manual launch inspection.
+
+Result summary:
+
+- Confirmed current logical Start/Safe and Yard-release indices already agree; tests now lock that
+  invariant to the rendered square.
+- Added non-playable center-cell geometry and dark center-cell rendering.
+- Added `DestinationMarkerState` derived from facade legal moves.
+- Rendered active-color `V` markers for all legal destinations while suppressing them during
+  animation locks.
+- Destination clicks continue to resolve through facade action IDs, with marker state clearing from
+  the subsequent snapshot.
+
+Issues discovered:
+
+- The visual confusion was partly from center cells that inherited board background styling rather
+  than an explicit non-traversable treatment.
+- No domain Start/Safe mismatch was found in the current implementation; the risk is now covered by
+  regression tests.
+
+Follow-up/refinement:
+
+- Full manual mouse-play verification should still be repeated in a real window before final
+  release/media documentation.
+
+Lessons learned:
+
+- Legal-destination affordances are safest when treated as a projection of facade actions, not as
+  a separate UI movement calculation.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do
