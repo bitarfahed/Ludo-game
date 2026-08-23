@@ -1,7 +1,7 @@
 [project]
 name = "ludo"
 version = "1.0"
-description = "A planned professional Python/Pygame desktop Ludo game."
+description = "A playable local Python/Pygame desktop Ludo game."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

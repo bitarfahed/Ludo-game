@@ -1,7 +1,7 @@
 # Gameplay Rules Specification
 
-This document is the authoritative gameplay-rules specification for Ludo. If a traditional Ludo
-variant differs from this document, this document wins.
+This document is the authoritative gameplay-rules specification for the currently implemented Ludo
+game. If a traditional Ludo variant differs from this document, this document wins.
 
 ## Terminology
 
@@ -22,6 +22,7 @@ variant differs from this document, this document wins.
 - The shared outer path contains exactly 52 logical positions.
 - The board uses four colors: Red, Green, Yellow, and Blue.
 - Each color has a start position on the shared 52-square path.
+- Implemented start positions are Red 0, Green 13, Yellow 26, and Blue 39.
 - Pieces move clockwise.
 - A piece must complete the full 52-position outer journey relative to its own start before entering
   its private Home Path.
@@ -104,6 +105,12 @@ There are exactly 8 safe squares on the outer path:
 
 - the four player starting squares;
 - four additional star-marked safe squares.
+
+Implemented safe-square indexes are:
+
+```text
+0, 8, 13, 21, 26, 34, 39, 47
+```
 
 Safe-square rules:
 
@@ -234,7 +241,7 @@ No legal moves:
 
 - If a roll produces zero legal moves, show a visible message similar to `NO LEGAL MOVE` and
   `Turn will pass...` for 5 seconds.
-- The message should not unnecessarily obscure the board.
+- The message does not unnecessarily obscure the board.
 - After 5 seconds, the turn ends.
 - The unusable roll is forfeited.
 

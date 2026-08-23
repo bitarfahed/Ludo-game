@@ -1,118 +1,145 @@
 # UX Design
 
-This document describes the planned desktop user experience. Screenshots, gameplay GIFs, and visual
-captures are future documentation artifacts and must not be fabricated before the game exists.
+This document describes the currently implemented desktop user experience. Screenshots, gameplay
+GIFs, and release media have not been added and must not be fabricated.
 
 ## UX Principles
 
-- Modern, polished, clean, and readable.
-- Inspired by traditional Ludo geometry without simply copying a paper board.
-- Restrained depth, shadows, highlights, and animation.
-- Immediately recognizable Red, Green, Yellow, and Blue player colors.
+- Modern, clean, and readable desktop presentation.
+- Classic Ludo structure with a restrained digital treatment.
+- Clear Red, Green, Yellow, and Blue player identity.
 - Multiple feedback cues instead of relying only on color.
-- Desktop mouse and keyboard first; mobile/touch is out of scope for V1.
+- Desktop mouse and keyboard first; mobile/touch is out of scope.
+- UI displays facade-provided state and never owns authoritative game rules.
 
-## Start Screen
+## Implemented Screens
 
-The start screen provides:
+The Pygame application includes:
 
-- 2 Players;
-- 3 Players;
-- 4 Players;
-- a clear transition to name entry;
-- invalid-input prevention before match start.
+- main menu;
+- player setup;
+- game board;
+- pause overlay;
+- final results.
 
-After player count selection, show one name input per player. Names are limited to 10 characters.
-Color assignment happens randomly when the match starts, not during manual selection.
+The application entry point is:
+
+```bash
+uv run python -m ludo.pygame_ui.main
+```
+
+A smoke-launch mode also exists:
+
+```bash
+uv run python -m ludo.pygame_ui.main --smoke
+```
+
+## Main Menu And Setup
+
+The main menu provides Start Game and Quit. Start Game opens player setup.
+
+Player setup provides:
+
+- 2-, 3-, and 4-player count selection;
+- one name field per active player;
+- 10-character name limiting;
+- disabled Start Game behavior until names are valid;
+- Back and Start Game actions.
+
+Color assignment happens when the match starts. Players do not manually choose colors.
 
 ## Color Assignment Feedback
 
-When the match begins, the UI should clearly associate each player name with its assigned color and
-Yard.
+When the match begins, each active player name is shown near the assigned Yard. Inactive colors
+remain visible as subdued board corners.
 
 - 2-player matches use a randomly selected opposite pair: Red/Yellow or Green/Blue.
-- 3-player matches use three random colors.
+- 3-player matches use three random active colors.
 - 4-player matches use all colors.
-- Inactive corners remain visually present as part of the board but clearly non-participating.
 
 ## Board Presentation
 
-The board should preserve classic Ludo readability:
+The board renderer displays:
 
-- clear shared path;
-- four recognizable Yards;
-- colored Home Paths;
-- clearly marked safe/star squares;
-- visually distinct Finish regions;
-- center dice location;
-- clean spacing for labels, timers, and stack summaries.
+- the shared 52-square outer path;
+- four Yards;
+- colored 5-square Home Paths;
+- safe/start markers;
+- star safe squares;
+- Finish regions;
+- a center dice area;
+- player label and timer areas.
 
-The board rendering layer maps logical positions to screen coordinates. Screen geometry must not
-define game state.
+Logical board positions are mapped to screen coordinates by `BoardGeometry`. Screen geometry does
+not define game state.
 
-## Player and Yard Labels
+## Player And Yard Labels
 
-Each Yard displays:
+Each active player area shows:
 
 - player name;
-- assigned color;
-- progress such as `3 / 4 finished`;
-- rank once achieved;
-- active-player indication when relevant.
+- active-player indication;
+- status such as finished-piece count or achieved rank;
+- timer when that player is active.
 
-The active player's name and Yard should receive restrained visual emphasis.
+Inactive corners are visually present but do not behave as gameplay participants.
 
 ## Current Turn Feedback
 
-The active player must be obvious through multiple cues:
+The current player is indicated through:
 
-- active name highlight;
-- subtle Yard highlight;
-- dice border or glow using current player color;
-- timer near the relevant player area;
-- phase-specific affordance, such as clickable dice or selectable pieces.
+- highlighted/current player text;
+- active Yard emphasis;
+- dice accent associated with the current color;
+- timer near the active player area;
+- legal-piece rings during move phase.
 
 ## Dice UX
 
-The dice sits in the center of the board between the final colored Finish regions. It is clickable
-during the roll phase. Avoid requiring a separate distant Roll button.
+The dice is displayed in the center board area.
 
-Planned dice states:
+Implemented states:
 
-- inactive/disabled;
-- rollable for current player;
-- rolling animation;
-- result displayed;
-- highlighted by current player's color.
+- rollable during roll phase;
+- disabled outside roll phase;
+- short dice-roll animation;
+- final authoritative dice value displayed after roll;
+- current-player accent when rollable.
+
+Dice clicks are routed through `GameFacade`. The UI does not generate or decide dice values.
 
 ## Timer Presentation
 
-The timer appears near the player whose decision is required and remains visible to all players.
-Display both:
+The active player's timer shows:
 
-- numeric seconds;
-- a small progress indicator or bar.
+- numeric seconds remaining;
+- a small progress bar.
 
-The roll phase and move phase each use a 10-second decision window. Pause stops the timer and resume
+Roll and move phases each use a 10-second decision window. Pause freezes the active timer and resume
 continues with the remaining time.
 
 ## Piece Representation
 
-Pieces are small circular game pieces identified by both color and letter:
+Pieces are rendered as small circles with a color and compact letter identity:
 
 ```text
 Red    -> r
 Green  -> g
-Blue   -> b
 Yellow -> y
+Blue   -> b
 ```
 
-The letter should appear inside a piece shape rather than as a raw board character.
+Pieces are positioned through board geometry according to facade snapshots:
+
+- `IN_YARD` pieces use Yard slots;
+- `ON_OUTER_PATH` pieces use global outer squares;
+- `ON_HOME_PATH` pieces use private Home Path squares;
+- `FINISHED` pieces use the player's Finish region.
 
 ## Stack Presentation
 
-When exactly one piece occupies a square, render it normally. When multiple pieces occupy a square,
-use a compact summary such as:
+Single pieces render normally. Multiple pieces occupying the same logical outer square render as a
+compact stack summary such as:
 
 ```text
 2r
@@ -120,90 +147,79 @@ use a compact summary such as:
 2r 1b
 ```
 
-Each color component should visually use its corresponding player color. Large stacks should not be
-drawn as overlapping full-size pieces.
+Each summary component uses the corresponding player color. This covers same-color stacks, mixed
+protected blocks, large safe-square stacks, and multi-color occupancy.
 
 ## Hover Inspection
 
-Hovering a board square should show an enlarged inspection popup or panel. For stacked squares, show
-readable details such as:
+Hovering an occupied outer square shows a popup with per-color counts, for example:
 
 ```text
-Red   x 2
-Blue  x 1
+Red x 2
+Blue x 1
 Green x 1
 ```
 
-For ordinary protected occupancy, indicate `PROTECTED BLOCK`. For a safe square, indicate
-`SAFE SQUARE`. Hover inspection must never modify game state.
+The popup also indicates:
+
+- `SAFE SQUARE` for safe-square occupancy;
+- `PROTECTED BLOCK` for ordinary protected occupancy.
+
+Hover inspection is visual-only and does not change game state.
 
 ## Legal-Move Presentation
 
-After a roll:
+After a roll with legal moves:
 
 - only legal pieces are selectable;
-- legal pieces receive a restrained ring, pulse, or highlight;
-- illegal pieces remain non-selectable;
-- hovering a legal piece may show a hint such as `Move 4 spaces`;
-- hovering a legal piece may preview the destination square.
+- legal pieces receive a visible ring;
+- illegal pieces do not submit moves;
+- hovering a legal piece previews the facade-provided destination;
+- selecting a legal piece submits the move through `GameFacade`.
 
-Legal-move calculation comes from the domain/application layer, not from Pygame UI code.
+The UI does not recalculate legal movement.
 
 ## Movement Animation
 
-Pieces should animate square-by-square along the logical route:
+Resolved moves animate through facade-provided route steps. The renderer interpolates from the
+piece's current source square to each authoritative route step, so a dice result of `N` displays
+exactly `N` visible movement progressions.
 
-```text
-A -> square -> square -> square -> destination
-```
-
-The animation layer visualizes a move already resolved by the game engine. It must not contain
-business/game-rule logic.
+Outer Path to Home Path and finish transitions are represented by route snapshots from the facade.
 
 ## Capture Animation
 
-Capture should use a short sequence:
+Capture feedback is non-blocking and presentation-only:
 
-1. moving piece reaches destination;
-2. captured piece receives brief visual feedback;
-3. captured piece returns visually to its Yard.
+1. the moving piece reaches the destination;
+2. the captured piece receives brief feedback;
+3. the captured piece returns visually to Yard.
 
-The sequence should be short enough that gameplay remains responsive.
+The domain/facade already resolved the capture before animation begins.
 
-## Finish and Ranking Feedback
+## Finish And Ranking Feedback
 
-When a piece reaches `FINISHED`, move it visually into the player's Finish area and update progress.
-Finished pieces are permanently non-interactive.
+Finished pieces appear in the player's Finish region and are no longer selectable.
 
-When a player finishes all four pieces, briefly display non-disruptive feedback such as:
-
-```text
-PLAYER NAME FINISHED!
-1st PLACE
-```
-
-The player's board status then shows the achieved rank.
+When a player finishes all four pieces, the UI displays brief ranking feedback. Ranked players are
+skipped by the turn engine. When only one unranked player remains, final ranking is assigned
+automatically and the UI transitions to results.
 
 ## No-Legal-Move Feedback
 
-If a roll has no legal moves, show visible feedback similar to:
-
-```text
-NO LEGAL MOVE
-Turn will pass...
-```
-
-The message lasts 5 seconds and should not unnecessarily obscure the board.
+If a roll has no legal moves, the game shows a `NO LEGAL MOVE` feedback message with a countdown.
+Input is blocked for the notice window, and the turn passes automatically after 5 seconds.
 
 ## Pause UX
 
-`ESC` pauses the game.
+`ESC` toggles pause.
 
 While paused:
 
 - turn timers stop;
-- game input is suspended;
-- gameplay animations pause consistently.
+- gameplay input is suspended;
+- animations pause;
+- facade-created UI clocks preserve remaining time.
 
 Pause menu:
 
@@ -214,48 +230,62 @@ Main Menu
 Quit
 ```
 
-Resuming restores the same game state and remaining timer rather than resetting the decision window.
+Restart Match, Main Menu, and Play Again reset presentation state so stale animations, hover state,
+and prior facade results do not leak into the next flow.
 
 ## Final Results Screen
 
-At match completion, show final rankings:
-
-```text
-FINAL RESULTS
-
-1st  Player A
-2nd  Player B
-3rd  Player C
-4th  Player D
-```
-
-Provide:
+At match completion, final rankings are shown in rank order. The screen provides:
 
 - Play Again;
 - Main Menu;
 - Quit.
 
-## Accessibility and Readability
+Play Again starts a fresh match from the previous setup.
 
-- Do not rely exclusively on color.
-- Use labels, letters, highlights, and placement together.
-- Keep timer text readable from typical desktop viewing distance.
-- Avoid tiny stack details by using hover inspection.
-- Maintain sufficient contrast on colored pieces and board regions.
-- Keep animation restrained and avoid effects that interfere with decision-making.
+## Audio
+
+The audio layer provides generated placeholder tones for:
+
+- UI clicks;
+- dice roll;
+- move;
+- capture;
+- finish;
+- ranking.
+
+Audio uses configurable volumes and includes a no-op fallback path.
+
+## Accessibility And Readability
+
+- UI does not rely exclusively on color.
+- Pieces use letters as well as color.
+- Active player is communicated through text, highlight, dice accent, and timer placement.
+- Stack summaries remain compact, with hover inspection for details.
+- Animations are restrained and non-blocking.
 
 ## Important UI States
 
+- main menu;
 - player-count selection;
 - name entry;
-- color assignment reveal/match start;
+- match start with assigned colors;
 - roll phase;
 - dice rolling;
 - move selection phase;
+- legal-piece hover preview;
 - no-legal-move notification;
 - move animation;
 - capture animation;
-- finished-piece update;
+- finish feedback;
 - player ranked;
 - paused;
 - final results.
+
+## Not Implemented
+
+- online/networked play;
+- mobile/touch-specific UI;
+- screenshots/GIFs in documentation;
+- curated licensed audio assets;
+- experimental gameplay expansions outside the current rules baseline.

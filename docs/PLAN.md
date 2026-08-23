@@ -1,8 +1,9 @@
 # Architecture and Implementation Plan
 
-This document plans architecture only. It does not implement source code. Product requirements are
-in [PRD.md](PRD.md), authoritative rules are in [PRD_GAME_RULES.md](PRD_GAME_RULES.md), UX direction
-is in [UX_DESIGN.md](UX_DESIGN.md), and the implementation roadmap is in [TODO.md](TODO.md).
+This document describes the current implemented architecture and preserves the rationale behind its
+main boundaries. Product requirements are in [PRD.md](PRD.md), authoritative rules are in
+[PRD_GAME_RULES.md](PRD_GAME_RULES.md), implemented UX behavior is in [UX_DESIGN.md](UX_DESIGN.md),
+and remaining release/documentation tasks are tracked in [TODO.md](TODO.md).
 
 ## Architectural Goals
 
@@ -11,66 +12,75 @@ is in [UX_DESIGN.md](UX_DESIGN.md), and the implementation roadmap is in [TODO.m
 - Make the core engine deterministic and testable.
 - Route GUI and future controllers through an application/SDK facade.
 - Keep architecture proportional to a local desktop game.
-- Leave a realistic extension point for future Bot controllers.
+- Leave a realistic extension point for future non-UI controllers without implementing them now.
 
-## Proposed Package Structure
-
-Future structure, not yet created:
+## Implemented Package Structure
 
 ```text
 src/
 └── ludo/
     ├── __init__.py
     ├── app/
-    │   ├── facade.py
-    │   ├── commands.py
-    │   └── snapshots.py
+    │   ├── __init__.py
+    │   └── facade.py
+    ├── audio/
+    │   ├── __init__.py
+    │   └── service.py
+    ├── config/
+    │   ├── __init__.py
+    │   └── defaults.py
     ├── domain/
+    │   ├── __init__.py
     │   ├── board.py
     │   ├── colors.py
-    │   ├── dice.py
-    │   ├── moves.py
+    │   ├── match.py
+    │   ├── movement.py
+    │   ├── occupancy.py
     │   ├── pieces.py
-    │   ├── rules.py
-    │   ├── state.py
+    │   ├── players.py
     │   └── turns.py
-    ├── config/
-    │   ├── defaults.py
-    │   └── schema.py
     ├── geometry/
-    │   └── board_geometry.py
-    ├── pygame_ui/
-    │   ├── main.py
-    │   ├── screens.py
-    │   ├── input.py
-    │   ├── rendering.py
-    │   └── animation.py
-    ├── audio/
-    │   └── service.py
-    └── resources/
+    │   ├── __init__.py
+    │   ├── board_geometry.py
+    │   └── grid.py
+    └── pygame_ui/
+        ├── __init__.py
+        ├── animation.py
+        ├── board_renderer.py
+        ├── controls.py
+        ├── gameplay_renderer.py
+        ├── interaction.py
+        ├── layout.py
+        ├── main.py
+        ├── render_models.py
+        ├── render_state.py
+        ├── screens.py
+        ├── state.py
+        └── theme.py
 ```
 
-Planned tests:
+Tests are organized as:
 
 ```text
 tests/
-├── unit/
-└── integration/
+├── integration/
+└── unit/
 ```
 
 ## Responsibility Boundaries
 
-- **Domain/game logic**: rules, pieces, movement, capture, block protection, bonus rolls, triple-six
-  tracking, turn rotation, ranking, and invariant enforcement.
-- **Board topology**: 1D logical outer path, color starts, home paths, safe-square identities.
-- **Application/SDK facade**: public boundary used by GUI and future controllers.
-- **Board geometry**: maps logical positions to screen coordinates for rendering only.
-- **Pygame UI**: screens, rendering, input, animations, and presentation state.
-- **Input**: translates mouse/keyboard events into application commands.
-- **Animation**: visualizes resolved domain events without deciding rules.
-- **Audio**: optional sound effects and volume configuration.
-- **Configuration**: versioned tunable values such as timers, animation timings, display settings,
-  and audio volumes.
+- **Domain/game logic**: colors, players, pieces, board topology, movement, capture, protected
+  occupancy, bonus rolls, Triple Six, turn rotation, timers, ranking, and match completion.
+- **Board topology**: 1D logical outer path, color starts, Home Paths, safe-square identities, and
+  Finished as a separate destination.
+- **Application/SDK facade**: public boundary used by Pygame and future controllers.
+- **Board geometry**: maps logical positions to screen coordinates and performs hit testing for UI.
+- **Pygame UI**: screens, rendering, input dispatch, animation, audio triggering, and presentation
+  state.
+- **Interaction**: translates mouse hover/clicks into facade commands or visual previews.
+- **Animation**: visualizes resolved facade route/event data without deciding rules.
+- **Audio**: generated sound cues and no-op fallback.
+- **Configuration**: animation and audio tuning defaults.
 
 Dependency direction:
 
@@ -78,6 +88,7 @@ Dependency direction:
 pygame_ui -> app -> domain
 pygame_ui -> geometry
 geometry -> domain board identifiers
+audio -> app result types
 domain -> no pygame dependency
 ```
 
@@ -87,75 +98,55 @@ domain -> no pygame dependency
 flowchart LR
     Player[Local human players] --> App[Ludo desktop application]
     App --> Display[Desktop window via Pygame]
-    App --> Files[Local config/resources]
+    App --> Local[Local source, config defaults, and generated audio tones]
 ```
 
-No network service, database, authentication provider, or external API is part of V1.
+No network service, database, authentication provider, external API, or paid service is part of the
+current baseline.
 
 ## Container View
 
 ```mermaid
 flowchart TB
-    UI[Pygame UI] --> Facade[Application/SDK Facade]
-    UI --> Geometry[Board Geometry Mapper]
-    UI --> Animation[Animation System]
+    UI[Pygame UI] --> Facade[GameFacade]
+    UI --> Geometry[Board Geometry]
+    UI --> Animation[Animation Manager]
     UI --> Audio[Audio Service]
     Facade --> Domain[Domain Engine]
     Domain --> Topology[Board Topology]
-    Domain --> Turns[Turn Manager]
-    Domain --> Rules[Rules and Legal Moves]
-    Facade --> Config[Configuration]
+    Domain --> Turns[Turn Engine]
+    Domain --> Occupancy[Collision and Protection]
+    Facade --> Config[Runtime Defaults]
     Geometry --> Topology
 ```
 
-## Component View
-
-```mermaid
-flowchart LR
-    Facade[GameFacade]
-    State[GameState]
-    Rules[LegalMoveService]
-    Resolver[MoveResolver]
-    Turns[TurnManager]
-    Dice[DiceProvider]
-    Clock[Clock/TimerProvider]
-    Ranking[RankingService]
-    Topology[BoardTopology]
-
-    Facade --> State
-    Facade --> Rules
-    Facade --> Resolver
-    Facade --> Turns
-    Facade --> Dice
-    Facade --> Clock
-    Resolver --> Topology
-    Resolver --> Ranking
-    Rules --> Topology
-    Turns --> Ranking
-```
-
-Names are provisional and may change during implementation if a clearer design emerges.
-
 ## Application/SDK Facade
 
-The facade is the single public entry point for GUI and future controllers. It should expose
-operations conceptually like:
+`GameFacade` is the public entry point for UI and future controllers. It exposes:
 
 - start match;
-- query immutable or read-only game snapshots;
-- query current player and phase;
-- roll dice;
-- query legal moves;
-- select/move piece;
-- query rankings;
-- pause/resume application state where appropriate.
+- pause and resume for UI-created matches;
+- immutable/read-only snapshots;
+- current player and phase queries;
+- seconds remaining;
+- dice rolling;
+- legal moves;
+- piece selection;
+- no-legal notice completion;
+- timeout expiration;
+- player and piece state lookup;
+- rankings and match-complete state.
 
-The final API should be designed during implementation, but the boundary requirement is fixed: GUI
-code must not bypass the facade to reproduce business logic.
+Facade snapshots include players, inactive colors, current player, turn phase, timer state, current
+dice value, legal moves, outer occupancies, rankings, and completion status.
 
-## Game State and State Machine
+Facade command results include structured events such as dice rolled, no legal move, piece moved,
+triple-six cancellation, turn passed, roll timeout, and move timeout. Results also expose capture,
+finish, bonus, ranking, turn-change, and match-completion information.
 
-Important phases:
+## Game State And State Machine
+
+Important implemented phases:
 
 ```mermaid
 stateDiagram-v2
@@ -176,33 +167,43 @@ stateDiagram-v2
     MatchComplete --> [*]
 ```
 
-Pause overlays the active gameplay phase and preserves remaining timer/animation state.
+Pause overlays active gameplay, freezes the UI-created clock, suspends input, and pauses animations.
 
-## Turn Manager
+## Turn Engine
 
-The Turn Manager should:
+The Turn Engine:
 
-- maintain clockwise eligible-player rotation;
-- skip inactive colors;
-- skip ranked players;
-- reset or preserve consecutive-six state according to the rules;
-- assign the final remaining rank automatically when one unranked player remains.
+- maintains clockwise eligible-player rotation;
+- skips inactive colors by only including active players;
+- skips ranked players after completion;
+- tracks roll and move phases;
+- tracks consecutive sixes;
+- emits public event information consumed by the facade;
+- handles roll and move timeouts;
+- handles no-legal move notice completion.
+
+Ranking and automatic final-rank assignment are owned by `Match` and integrated after move
+resolution.
 
 ## Board Topology Representation
 
-The authoritative topology should be a logical 1D model:
+The authoritative topology is a logical 1D model:
 
 - global outer positions `0..51`;
-- color-specific start positions;
+- start positions Red 0, Green 13, Yellow 26, Blue 39;
+- eight safe positions: four starts and four star squares;
 - color-specific Home Path positions `0..4`;
-- separate Finished state;
-- safe-square identity set of exactly 8 outer positions.
+- separate Finished state.
 
-Movement should be represented in steps relative to a piece's color start, not by screen pixels.
+Movement is represented in steps relative to a piece's color start, not by screen pixels.
 
-## Rules and Legal Moves
+`OUTER_GRID_PATH` maps the 52 logical outer positions to a 15x15 board grid for rendering. Four
+corner transitions are intentional diagonal single logical steps so the 52-square path remains
+continuous on the classic board shape.
 
-A dedicated rules/legal-move service should determine:
+## Rules And Legal Moves
+
+Implemented domain services determine:
 
 - which pieces can move for a dice result;
 - Yard exit legality;
@@ -211,115 +212,120 @@ A dedicated rules/legal-move service should determine:
 - exact finish;
 - overshoot prevention;
 - capture eligibility;
-- protected block handling;
-- whether a move result creates a bonus.
+- protected-block behavior;
+- bonus roll eligibility;
+- Triple Six cancellation;
+- ranking and match completion.
 
-Pygame must display legal choices from this service rather than recalculating them.
+Pygame displays legal choices from facade snapshots and does not recalculate movement legality.
 
 ## Sequence Flow
 
 ```mermaid
 sequenceDiagram
     participant UI as Pygame UI
-    participant App as Application Facade
-    participant Rules as LegalMoveService
-    participant Domain as Domain Engine
+    participant App as GameFacade
+    participant Turns as TurnEngine
+    participant Domain as Domain Rules
 
     UI->>App: roll()
-    App->>Domain: get dice result
-    App->>Rules: legal moves for current player/result
-    Rules-->>App: legal move list
-    App-->>UI: state snapshot + legal choices
-    UI->>App: select_piece(piece_id)
-    App->>Domain: resolve move
-    Domain-->>App: domain events
-    App-->>UI: updated snapshot + events for animation
+    App->>Turns: roll()
+    Turns->>Domain: validate dice, legal moves, triple-six state
+    Domain-->>Turns: event data
+    Turns-->>App: TurnEvent
+    App-->>UI: FacadeResult + GameSnapshot
+    UI->>App: choose_piece(piece_id)
+    App->>Turns: select_piece(piece_id)
+    Turns->>Domain: resolve move and collision
+    Domain-->>Turns: moved piece, capture/protection, bonus
+    App-->>UI: updated snapshot + animation/audio event data
 ```
 
-## Randomness and Time
+## Randomness And Time
 
-Randomness and time must be injectable or controllable:
+Randomness and time are injectable:
 
-- dice rolls should use a provider interface or equivalent abstraction;
-- color assignment should use controlled randomness;
-- timers should use a clock/timer abstraction;
-- tests should supply deterministic providers.
+- dice rolls use a `Dice` protocol with fixed and random implementations;
+- color assignment uses `ColorRandomizer` with fixed and random implementations;
+- timers use a `Clock` protocol;
+- UI-created facade matches use `PausableClock`;
+- tests supply deterministic providers.
 
 ## Configuration
 
-Use versioned configuration for tunable application values:
+Implemented configuration currently covers:
 
-- roll decision timeout: 10 seconds;
-- move decision timeout: 10 seconds;
-- no-legal-move notification: 5 seconds;
-- animation timings;
-- display/window settings;
-- audio volumes.
+- movement animation duration per route step;
+- capture feedback and return durations;
+- finish pulse duration;
+- dice animation duration;
+- no-legal notice duration;
+- transient feedback duration;
+- audio enablement and volumes.
 
 Fundamental game-rule invariants such as outer path length 52, Home Path length 5, and safe-square
-count 8 may remain strongly typed constants/enums rather than user configuration.
+count 8 remain constants in domain/geometry code rather than user configuration.
 
-Planned application version: `1.00`. The future package should have a single authoritative version
-location, likely package metadata, with runtime display reading from that source rather than
-duplicating strings. Configuration schema versions should be tracked separately when introduced.
+Package metadata stores version `1.0`, the normalized PEP 440 representation of the documented
+application version `1.00`.
 
-## Error Handling and Logging
+## Error Handling
 
-- Invalid commands should fail with clear application-level errors or result objects.
-- Domain invariants should fail fast during development.
-- User-facing messages should be concise and non-technical.
-- Logging should support debugging during development without exposing unnecessary complexity.
+- Invalid facade commands raise `GameFacadeError`.
+- Invalid domain operations fail fast with clear `ValueError`-style errors.
+- UI actions that are invalid for the current phase are ignored or rejected without mutating state.
+- User-facing messages are concise and non-technical.
 
-## Future Bot Extension
+## Future Controller Extension
 
-Bots are out of scope for V1. The architecture should allow:
+Non-UI controllers are not implemented. The architecture preserves this future direction:
 
 ```text
-Human Controller -> Application/Game API
-Bot Controller   -> same Application/Game API
+Human Controller -> GameFacade
+Other Controller -> GameFacade
 ```
 
-A future Bot should receive snapshots and legal moves, then choose among legal actions. It must not
-modify internal game objects directly. No AI APIs or external services are planned.
+A future controller can inspect snapshots and legal moves, then choose among legal actions without
+direct access to mutable domain internals.
 
 ## Testing Strategy
 
-- Follow RED -> GREEN -> REFACTOR.
-- Unit tests cover domain services, topology, move legality, move resolution, turns, timers,
-  ranking, randomness providers, and configuration validation.
-- Integration tests cover facade-level workflows.
-- Public game/domain operations require tests.
-- Tests cover normal behavior, invalid input, boundary conditions, rule interactions, and
-  deterministic timer/state transitions.
-- Tests must not depend on external services.
+The current test suite includes unit and integration coverage for:
 
-Critical scenarios are listed in [PRD_GAME_RULES.md](PRD_GAME_RULES.md#acceptance-and-test-scenarios).
+- domain models and invariants;
+- board topology and grid geometry;
+- movement and legal moves;
+- capture/protection occupancy rules;
+- turn phases, dice, timers, bonuses, Triple Six, and no-legal flow;
+- match setup, color assignment, ranking, and completion;
+- facade workflows and public snapshots;
+- render-state preparation;
+- interaction controller behavior;
+- screen-flow state;
+- animation state;
+- audio event mapping.
 
-## Linting and Code Quality
+Tests use deterministic clocks, dice, and color randomizers. Rendering tests avoid brittle
+screenshot comparisons.
 
-Plan Ruff with:
+## Linting And Code Quality
+
+Ruff is configured in `pyproject.toml` with:
 
 ```toml
 line-length = 100
 ```
 
-Appropriate modern categories should be selected during tool setup. Suppressions should not be
-added merely to pass lint without documented justification.
+Current baseline verification:
 
-Code quality expectations:
+- `uv run pytest`: passing.
+- `uv run pytest --cov`: above the configured 85% threshold.
+- `uv run ruff check .`: passing.
 
-- descriptive naming;
-- Single Responsibility Principle;
-- DRY where it reduces real maintenance cost;
-- composition over unnecessary inheritance;
-- abstractions only when they solve a real problem;
-- detailed docstrings;
-- comments explaining why and non-obvious assumptions.
-
-## Not Applicable for V1
+## Not Applicable For Current Baseline
 
 The project has no external API, network service, database, authentication, token usage, or paid
-service dependency. Therefore the architecture should not include API gateways, rate-limit queues,
+service dependency. The architecture intentionally does not include API gateways, rate-limit queues,
 secret-management systems beyond normal repository hygiene, REST APIs, microservices, or database
 abstractions.
 
@@ -333,10 +339,10 @@ abstractions.
   logic.
 - **Rationale**: A 1D path directly models movement, simplifies legal-move testing, and avoids
   coupling domain state to rendering.
-- **Trade-offs/consequences**: Rendering needs a separate mapping layer, but domain logic becomes
-  simpler and more deterministic.
+- **Trade-offs/consequences**: Rendering needs a separate mapping layer, but domain logic remains
+  simpler and deterministic.
 
-### ADR 2: Separate Logical Positions from Screen Coordinates
+### ADR 2: Separate Logical Positions From Screen Coordinates
 
 - **Decision**: Store game state as logical positions and map them to screen coordinates only in the
   geometry/rendering layer.
@@ -346,44 +352,46 @@ abstractions.
 - **Trade-offs/consequences**: The geometry mapper must be kept accurate, but it has no authority
   over rules.
 
-### ADR 3: Domain Engine Independent from Pygame
+### ADR 3: Domain Engine Independent From Pygame
 
 - **Decision**: The domain engine must not import or depend on Pygame.
 - **Context**: Rules should be testable without opening a desktop window.
 - **Alternatives considered**: Implement rules inside Pygame event handlers.
 - **Rationale**: Separation improves testability, maintainability, and future controller support.
-- **Trade-offs/consequences**: The UI must translate domain events into presentation behavior.
+- **Trade-offs/consequences**: The UI translates domain/facade events into presentation behavior.
 
-### ADR 4: Application/SDK Facade as GUI Boundary
+### ADR 4: Application/SDK Facade As GUI Boundary
 
 - **Decision**: Pygame interacts with game logic through an application/SDK facade.
 - **Context**: Without a boundary, GUI code can accumulate duplicated rule decisions.
 - **Alternatives considered**: Direct UI access to domain objects.
 - **Rationale**: The facade provides a stable contract for GUI, tests, and future Bot controllers.
-- **Trade-offs/consequences**: The facade must be designed carefully to avoid becoming an unstructured
+- **Trade-offs/consequences**: The facade must stay coherent rather than becoming an unstructured
   pass-through.
 
-### ADR 5: Dependency-Injected Randomness and Time
+### ADR 5: Dependency-Injected Randomness And Time
 
-- **Decision**: Dice, color assignment, and timers should use injectable providers or equivalent
+- **Decision**: Dice, color assignment, and timers use injectable providers or equivalent
   abstractions.
 - **Context**: Tests need deterministic results for random and time-based behavior.
 - **Alternatives considered**: Direct calls to random/time APIs throughout the code.
 - **Rationale**: Controlled providers make rule interactions, timeouts, and color assignment
   testable.
-- **Trade-offs/consequences**: Slightly more setup is needed, but tests become reliable.
+- **Trade-offs/consequences**: Slightly more setup is needed, but tests are reliable.
 
-### ADR 6: Human-vs-Human V1 with Future Controller Extension
+### ADR 6: Human-vs-Human Baseline With Future Controller Extension
 
-- **Decision**: Implement only Human vs Human in V1 while designing the facade so future Bots can use
+- **Decision**: Implement Human vs Human while designing the facade so future controllers can use
   the same legal-action API.
-- **Context**: Bots are explicitly out of scope, but future support should not require a redesign.
-- **Alternatives considered**: Build Bot logic now or ignore future controller needs entirely.
+- **Context**: Non-UI controllers are out of scope, but future support should not require a
+  redesign.
+- **Alternatives considered**: Build additional controller logic now or ignore future controller
+  needs entirely.
 - **Rationale**: A shared action boundary supports extension without speculative AI implementation.
-- **Trade-offs/consequences**: The API must expose enough state for a future Bot while staying focused
-  on current gameplay.
+- **Trade-offs/consequences**: The API exposes enough state for a future Bot while staying focused on
+  current gameplay.
 
-### ADR 7: Dynamic Mixed-Player Block as Intentional Domain Rule
+### ADR 7: Dynamic Mixed-Player Block As Intentional Domain Rule
 
 - **Decision**: Treat the custom protected-block system, including legally evolved mixed-player
   blocks, as a first-class domain rule.
@@ -391,5 +399,5 @@ abstractions.
 - **Alternatives considered**: Use traditional blocking/capture rules or treat coexistence as a UI
   artifact.
 - **Rationale**: The rule is strategic and must be enforced consistently by the engine.
-- **Trade-offs/consequences**: Legal-move and capture logic need explicit occupancy-history semantics
-  so mixed coexistence cannot be created by declining a vulnerable capture.
+- **Trade-offs/consequences**: Legal-move and capture logic need explicit occupancy-history
+  semantics so mixed coexistence cannot be created by declining a vulnerable capture.

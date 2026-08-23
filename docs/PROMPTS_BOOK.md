@@ -1481,6 +1481,86 @@ Lessons learned:
 - A 1D-to-2D path can be logically correct while still feeling wrong if the animation omits the
   source position and jumps directly between destination route points.
 
+## Documentation Baseline — Current Implemented Game
+
+Prompt ID: Documentation Baseline
+
+Title: Current Implemented Game Documentation Audit
+
+Goal: Perform a documentation-only audit and update so project documentation accurately reflects
+the currently implemented and tested game.
+
+Context: The project has progressed beyond the early planning documents. The implemented baseline
+now includes playable local Human vs Human Ludo through Pygame, domain rules, a facade boundary,
+board geometry, rendering, interaction, animations, audio, pause/restart/results flow, and automated
+tests.
+
+Full prompt or faithful prompt record: The documentation-baseline prompt was provided as an
+attached pasted text file. Its authoritative requirements included:
+
+- inspect actual implementation, tests, metadata, and documentation;
+- document only functionality that currently exists;
+- do not document experimental gameplay expansions such as special/bonus die variants, hazards,
+  bombs, backward capture, coins/shop, split dice, Time Crystal/Undo, or Bot/AI gameplay;
+- update README, rules, UX, architecture/plan, TODO, project metadata if stale, and this prompts
+  book;
+- preserve historical prompt entries rather than rewriting old milestones;
+- modify no gameplay code and no tests;
+- run `uv run pytest`, `uv run pytest --cov`, and `uv run ruff check .`;
+- verify the documented application launch command when practical.
+
+Files expected to change:
+
+- `README.md`
+- `docs/PRD.md`
+- `docs/PRD_GAME_RULES.md`
+- `docs/UX_DESIGN.md`
+- `docs/PLAN.md`
+- `docs/TODO.md`
+- `docs/PROMPTS_BOOK.md`
+- `pyproject.toml`
+
+Constraints:
+
+- Documentation-only change.
+- Do not modify gameplay code or tests.
+- Do not add features or refactor source code.
+- Do not change game rules.
+- Do not add or describe unimplemented experimental expansions.
+- Do not fabricate screenshots, media, performance claims, or manual gameplay verification.
+
+Verification performed:
+
+- Audited documentation against implementation and tests.
+- Updated project metadata description only.
+- Ran `uv run pytest`: 1478 passed.
+- Ran `uv run pytest --cov`: 86.82% total coverage, above the configured 85% threshold.
+- Ran `uv run ruff check .`: all checks passed.
+- Ran `uv run python -m ludo.pygame_ui.main --smoke`: application entry point started and exited.
+
+Result summary:
+
+- README now presents the project as a playable implemented game rather than a planned project.
+- PRD, UX, and architecture documents now describe the current baseline.
+- Rules documentation now records the implemented start and safe-square indexes.
+- TODO now marks the current coverage and lint/test baseline as complete while leaving release
+  media, licensing, attribution, and tagging planned.
+
+Issues discovered:
+
+- README, PRD, UX, PLAN, and `pyproject.toml` still contained planning-era language.
+- Historical prompts-book entries intentionally retain their original milestone context.
+
+Follow-up/refinement:
+
+- Add real screenshots/GIFs only after a separate release/media task captures them.
+- License, attribution, packaging, and release tagging remain future release-preparation work.
+
+Lessons learned:
+
+- Current-state documents and historical prompt records serve different purposes; only the former
+  should be rewritten as the implementation evolves.
+
 ## Future Entries
 
 Future prompt entries should be added only after the work is actually requested and performed. Do

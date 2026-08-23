@@ -12,7 +12,7 @@ Default owner: Developer / Codex-assisted.
 
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
-| Create initial README | Complete | High | Developer / Codex-assisted | None | README accurately states planning-only status and links documentation. |
+| Create initial README | Complete | High | Developer / Codex-assisted | None | README accurately states the current playable baseline and links documentation. |
 | Create PRD | Complete | High | Developer / Codex-assisted | None | Product requirements, scope, goals, constraints, and milestones documented. |
 | Create rules specification | Complete | High | Developer / Codex-assisted | None | Authoritative gameplay rules and critical test scenarios documented. |
 | Create UX design document | Complete | High | Developer / Codex-assisted | None | Planned screens, interactions, feedback, and accessibility notes documented. |
@@ -94,12 +94,12 @@ Default owner: Developer / Codex-assisted.
 
 | Task | Status | Priority | Owner | Dependencies | Definition of Done |
 | --- | --- | --- | --- | --- | --- |
-| Expand test coverage | Planned | High | Developer / Codex-assisted | Domain/facade implementation | Global coverage reaches `>= 85%`; core rules exceed target where practical. |
-| Run lint and tests | Planned | High | Developer / Codex-assisted | Tests/tooling | `uv run ruff check .` and `uv run pytest` pass. |
+| Expand test coverage | Complete | High | Developer / Codex-assisted | Domain/facade implementation | Global coverage reaches `>= 85%`; core rules exceed target where practical. |
+| Run lint and tests | Complete | High | Developer / Codex-assisted | Tests/tooling | `uv run ruff check .` and `uv run pytest` pass. |
 | Add screenshots/GIFs | Planned | Medium | Developer / Codex-assisted | Playable UI | Real screenshots/GIFs are captured and added to README. |
 | Add architecture diagrams as artifacts | Planned | Low | Developer / Codex-assisted | Architecture stabilization | Useful diagrams are exported or linked without duplicating stale content. |
 | Choose license | Planned | Medium | Developer / Codex-assisted | Release preparation | License file and README license section are accurate. |
 | Add third-party attribution | Planned | Medium | Developer / Codex-assisted | Dependencies/assets | Dependency and asset credits are documented. |
 | Tag meaningful release | Planned | Medium | Developer / Codex-assisted | Final QA | Version tag matches the authoritative application version. |
 
-Future implementation tasks remain uncompleted by design.
+Remaining planned work is release/documentation polish, not core gameplay implementation.
